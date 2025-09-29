@@ -1,0 +1,14 @@
+python lerobot/scripts/control_robot_reset.py record \
+    --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+    --fps 30 \
+    --tags so100 tutorial \
+    --warmup-time-s 5 \
+    --episode-time-s 18 \
+    --reset-time-s 6 \
+    --num-episodes 20 \
+    --push-to-hub 0 \
+    --local-files-only 1 \
+    --root /path/to/datasets/robot_example \
+    --repo-id task/pick_put \
+    --single-task "[Robot] Pick up the object and put it into the bowl." \
+    --resume 1
