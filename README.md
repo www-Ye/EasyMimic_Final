@@ -1,4 +1,4 @@
-# EasyMimic: A Human-Robot Co-training Framework based on GR00T
+# EasyMimic: A Low-Cost Framework for Robot Imitation Learning from Human Videos
 
 EasyMimic is a robot imitation learning framework based on NVIDIA Isaac GR00T and LeRobot. It provides a complete solution from data collection, processing, co-training, to inference deployment, aiming to enable robots to learn complex tasks by observing human demonstrations.
 
