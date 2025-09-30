@@ -1,0 +1,74 @@
+# 相机抖动配置文件
+# 用于解决SLAM中相机运动不足导致的关键帧对缺失问题
+
+camera_jitter:
+  # 是否启用相机抖动
+  enabled: true
+  
+  # 几何抖动参数
+  geometric:
+    # 虚拟相机平移的标准差 (相对于图像尺寸) - 增加到0.005
+    translation_std: 0.008
+    
+    # 虚拟相机旋转的标准差 (弧度) - 增加到0.02 (约1.15度)
+    rotation_std: 0.02
+    
+    # 焦距变化的标准差 (相对值) - 增加到0.01
+    focal_std: 0.01
+    
+    # 光心偏移的标准差 (像素) - 增加到2.0
+    center_std: 2.0
+    
+    # 启用几何抖动
+    enabled: true
+  
+  # 光度抖动参数
+  photometric:
+    # 启用光度抖动 - 改为true以增加视觉多样性
+    enabled: true
+    
+    # 亮度变化标准差
+    brightness_std: 0.05
+    
+    # 对比度变化标准差
+    contrast_std: 0.03
+  
+  # 虚拟帧生成策略
+  virtual_frames:
+    # 每帧应用抖动的概率 - 增加到80%
+    jitter_probability: 0.8
+    
+    # 虚拟帧生成间隔 (每N帧生成虚拟帧) - 改为每2帧
+    generation_interval: 2
+    
+    # 每次生成的虚拟帧数量范围 - 增加最大数量
+    num_virtual_min: 2
+    num_virtual_max: 3
+    
+    # 低运动检测阈值 (0-1, 越低越容易触发虚拟帧生成)
+    low_motion_threshold: 0.1
+  
+  # 随机种子 (设为null使用随机种子)
+  random_seed: 42
+  
+  # 调试选项
+  debug:
+    # 是否打印详细信息
+    verbose: true
+    
+    # 是否保存虚拟帧图像用于调试
+    save_virtual_frames: false
+    
+    # 调试输出目录
+    debug_output_dir: "./debug_jitter"
+
+# SLAM相关配置
+slam:
+  # SLAM失败时的回退策略
+  fallback_strategy: "disable_jitter"  # "disable_jitter" 或 "skip_episode"
+  
+  # 是否在SLAM失败时自动重试
+  auto_retry: true
+  
+  # 最大重试次数
+  max_retries: 2
