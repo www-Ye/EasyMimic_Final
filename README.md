@@ -12,7 +12,7 @@ First, we need to collect video data of a human performing the task:
 
 ```bash
 python lerobot/scripts/control_robot_reset.py record \
-  --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+  --robot-path lerobot/configs/robot/so100_plus_joycon_single.yaml \
   --fps 30 \
   --tags so100 tutorial \
   --warmup-time-s 5 \
@@ -40,7 +40,7 @@ Next, control the robot with a Joy-Con controller to collect demonstration data:
 
 ```bash
 python lerobot/scripts/control_robot_reset.py record \
-  --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+  --robot-path lerobot/configs/robot/so100_plus_joycon_single.yaml \
   --fps 30 \
   --tags so100 tutorial \
   --warmup-time-s 5 \
@@ -141,7 +141,7 @@ python scripts/inference_service.py --server \
 
 # Step 2: Start the Robot Control Client
 python lerobot/scripts/control_robot_gr00t.py record \
-  --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+  --robot-path lerobot/configs/robot/so100_plus_joycon_single.yaml \
   --fps 30 \
   --tags so100_plus tutorial eval \
   --warmup-time-s 5 \
