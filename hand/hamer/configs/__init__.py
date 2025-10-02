@@ -2,7 +2,7 @@ import os
 from typing import Dict
 from yacs.config import CfgNode as CN
 
-CACHE_DIR_HAWOR = "./_DATA"
+CACHE_DIR_HAMER = "./_DATA"
 
 def to_lower(x: Dict) -> Dict:
     """
@@ -107,11 +107,11 @@ def get_config(config_file: str, merge: bool = True, update_cachedir: bool = Fal
 
     if update_cachedir:
       def update_path(path: str) -> str:
-        if os.path.basename(CACHE_DIR_HAWOR) in path:
+        if os.path.basename(CACHE_DIR_HAMER) in path:
           return path
         if os.path.isabs(path):
           return path
-        return os.path.join(CACHE_DIR_HAWOR, path)
+        return os.path.join(CACHE_DIR_HAMER, path)
 
       cfg.MANO.MODEL_PATH = update_path(cfg.MANO.MODEL_PATH)
       cfg.MANO.MEAN_PARAMS = update_path(cfg.MANO.MEAN_PARAMS)

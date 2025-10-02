@@ -14,11 +14,11 @@ import sys
 
 from aitviewer.headless import HeadlessRenderer
 # Assuming these imports are correct and available in your environment
-from hawor_api import detect_track_video, hawor_motion_estimation, hawor_infiller, hawor_slam, compute_all_finger_distances
+from hamer_api import detect_track_video, hamer_motion_estimation, hamer_infiller, hamer_slam, compute_all_finger_distances
 from lib.eval_utils.custom_utils import world2cam_convert, cam2world_convert, load_slam_cam
 from lib.vis.run_vis2 import run_vis2_on_video, run_vis2_on_video_cam, run_vis2_on_video_cam_random_color
-from hawor.utils.process import get_mano_faces, run_mano, run_mano_left
-from hawor.utils.rotation import angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis, angle_axis_to_quaternion
+from hamer.utils.process import get_mano_faces, run_mano, run_mano_left
+from hamer.utils.rotation import angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis, angle_axis_to_quaternion
 
 def quaternion_to_rpy(quaternion):
     """Convert quaternion to roll, pitch, yaw Euler angles."""
@@ -140,26 +140,26 @@ def process_hand_video(input_episode_path, enable_visualization=False, new_base_
                 return num_frames_processed
 
         # --- Stage 2: Motion Estimation ---
-        frame_chunks_all, img_focal = hawor_motion_estimation(input_episode_path, start_idx, end_idx, seq_folder)
+        frame_chunks_all, img_focal = hamer_motion_estimation(input_episode_path, start_idx, end_idx, seq_folder)
         valid_hand = list(frame_chunks_all.keys())
         if not valid_hand:
-            print(f"Skipping {input_episode_path}: No valid hands detected by hawor_motion_estimation.")
+            print(f"Skipping {input_episode_path}: No valid hands detected by hamer_motion_estimation.")
             print(f"---EPISODE_LENGTH---:{num_frames_processed}")
             return num_frames_processed
 
         # --- Stage 3: SLAM ---
-        slam_path = os.path.join(seq_folder, f"SLAM/hawor_slam_w_scale_{start_idx}_{end_idx}.npz")
+        slam_path = os.path.join(seq_folder, f"SLAM/hamer_slam_w_scale_{start_idx}_{end_idx}.npz")
         if not os.path.exists(slam_path):
-            hawor_slam(input_episode_path, start_idx, end_idx, seq_folder)
+            hamer_slam(input_episode_path, start_idx, end_idx, seq_folder)
         # Check again if SLAM ran successfully
         if not os.path.exists(slam_path):
-            print(f"Skipping {input_episode_path}: SLAM file not found even after running hawor_slam.")
+            print(f"Skipping {input_episode_path}: SLAM file not found even after running hamer_slam.")
             print(f"---EPISODE_LENGTH---:{num_frames_processed}")
             return num_frames_processed
         R_w2c_sla_all, t_w2c_sla_all, R_c2w_sla_all, t_c2w_sla_all = load_slam_cam(slam_path)
 
         # --- Stage 4: Infilling (Hand Pose Estimation) ---
-        pred_trans, pred_rot, pred_hand_pose, pred_betas, pred_valid = hawor_infiller(input_episode_path, start_idx, end_idx, frame_chunks_all, seq_folder)
+        pred_trans, pred_rot, pred_hand_pose, pred_betas, pred_valid = hamer_infiller(input_episode_path, start_idx, end_idx, frame_chunks_all, seq_folder)
         print("pred_trans shape:", pred_trans.shape) # Shape: [2, T, 3]
         print("pred_rot shape:", pred_rot.shape)     # Shape: [2, T, 3]
         print("pred_hand_pose shape:", pred_hand_pose.shape) # Shape: [2, T, 45]

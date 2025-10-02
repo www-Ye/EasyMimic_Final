@@ -14,13 +14,13 @@ import pandas as pd
 from tqdm import tqdm
 
 # Import required functions
-from hawor_api import (
-    detect_track_video, hawor_motion_estimation, hawor_infiller,
-    hawor_slam, compute_all_finger_distances, computer_thumb_index_thenar_midpoint
+from hamer_api import (
+    detect_track_video, hamer_motion_estimation, hamer_infiller,
+    hamer_slam, compute_all_finger_distances, computer_thumb_index_thenar_midpoint
 )
 from lib.eval_utils.custom_utils import world2cam_convert, load_slam_cam
-from hawor.utils.process import get_mano_faces, run_mano, run_mano_left
-from hawor.utils.rotation import (
+from hamer.utils.process import get_mano_faces, run_mano, run_mano_left
+from hamer.utils.rotation import (
     angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis,
     angle_axis_to_quaternion
 )
@@ -339,23 +339,23 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             return None
 
         # 2. Motion estimation
-        frame_chunks_all, img_focal = hawor_motion_estimation(episode_path, start_idx, end_idx, seq_folder)
+        frame_chunks_all, img_focal = hamer_motion_estimation(episode_path, start_idx, end_idx, seq_folder)
         valid_hand = list(frame_chunks_all.keys())
         if not valid_hand:
             print(f"Skipping {episode_path}: No valid hand detected")
             return None
 
         # 3. SLAM
-        slam_path = os.path.join(seq_folder, f"SLAM/hawor_slam_w_scale_{start_idx}_{end_idx}.npz")
+        slam_path = os.path.join(seq_folder, f"SLAM/hamer_slam_w_scale_{start_idx}_{end_idx}.npz")
         if not os.path.exists(slam_path):
             try:
                 slam_dir = os.path.join(seq_folder, "SLAM")
                 os.makedirs(slam_dir, exist_ok=True)
-                candidate_files = [f for f in os.listdir(slam_dir) if f.startswith("hawor_slam_w_scale_") and f.endswith(".npz")]
+                candidate_files = [f for f in os.listdir(slam_dir) if f.startswith("hamer_slam_w_scale_") and f.endswith(".npz")]
 
                 def parse_start_end(filename: str):
                     try:
-                        stem = filename.replace("hawor_slam_w_scale_", "").replace(".npz", "")
+                        stem = filename.replace("hamer_slam_w_scale_", "").replace(".npz", "")
                         parts = stem.split("_")
                         s = int(parts[0])
                         e = int(parts[1])
@@ -412,9 +412,9 @@ def update_episode_data(episode_path, coordinate_transformed=True,
                         print(f"Failed to reuse {fname}: {e}")
 
                 if not reused:
-                    hawor_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
+                    hamer_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
             except Exception as e:
-                hawor_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
+                hamer_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
 
         if not os.path.exists(slam_path):
             print(f"Skipping {episode_path}: SLAM file not found")
@@ -423,7 +423,7 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         R_w2c_sla_all, t_w2c_sla_all, R_c2w_sla_all, t_c2w_sla_all = load_slam_cam(slam_path)
 
         # 4. Hand pose estimation
-        pred_trans, pred_rot, pred_hand_pose, pred_betas, pred_valid = hawor_infiller(
+        pred_trans, pred_rot, pred_hand_pose, pred_betas, pred_valid = hamer_infiller(
             episode_path, start_idx, end_idx, frame_chunks_all, seq_folder
         )
 

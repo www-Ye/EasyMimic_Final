@@ -30,7 +30,7 @@ def detect_track_video(img_folder):
 
 
 from collections import defaultdict
-from lib.models.hawor import HAWOR
+from lib.models.hamer import HAMER
 import torch
 import cv2
 from lib.vis.renderer import Renderer
@@ -38,14 +38,14 @@ from lib.eval_utils.custom_utils import interpolate_bboxes
 from lib.pipeline.tools import parse_chunks, parse_chunks_hand_frame
 import json
 import joblib
-from hawor.utils.process import get_mano_faces, run_mano, run_mano_left
-from hawor.utils.rotation import angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis
+from hamer.utils.process import get_mano_faces, run_mano, run_mano_left
+from hamer.utils.rotation import angle_axis_to_rotation_matrix, rotation_matrix_to_angle_axis
 
-CHECKPOINT = "./weights/hawor/checkpoints/hawor.ckpt"
+CHECKPOINT = "./weights/hamer/checkpoints/hamer.ckpt"
 
-def load_hawor(checkpoint_path):
+def load_hamer(checkpoint_path):
     from pathlib import Path
-    from hawor.configs import get_config
+    from hamer.configs import get_config
     model_cfg = str(Path(checkpoint_path).parent.parent / 'model_config.yaml')
     model_cfg = get_config(model_cfg, update_cachedir=True)
 
@@ -55,13 +55,13 @@ def load_hawor(checkpoint_path):
         assert model_cfg.MODEL.IMAGE_SIZE == 256, f"MODEL.IMAGE_SIZE ({model_cfg.MODEL.IMAGE_SIZE}) should be 256 for ViT backbone"
         model_cfg.MODEL.BBOX_SHAPE = [192,256]
         model_cfg.freeze()
-    model = HAWOR.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
+    model = HAMER.load_from_checkpoint(checkpoint_path, strict=False, cfg=model_cfg)
     return model, model_cfg
 
-def hawor_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_focal=None):
-    print("in hawor_motion_estimation")
-    model, model_cfg = load_hawor(CHECKPOINT)
-    print("load hawor model")
+def hamer_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_focal=None):
+    print("in hamer_motion_estimation")
+    model, model_cfg = load_hamer(CHECKPOINT)
+    print("load hamer model")
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
     model.eval()
@@ -82,11 +82,11 @@ def hawor_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_foca
     tid = np.array([tr for tr in tracks])
 
     if os.path.exists(f'{seq_folder}/tracks_{start_idx}_{end_idx}/frame_chunks_all.npy'):
-        print("skip hawor motion estimation")
+        print("skip hamer motion estimation")
         frame_chunks_all = joblib.load(f'{seq_folder}/tracks_{start_idx}_{end_idx}/frame_chunks_all.npy')
         return frame_chunks_all, img_focal
 
-    print(f'Running hawor on {img_folder} ...')
+    print(f'Running hamer on {img_folder} ...')
 
     left_trk = []
     right_trk = []
@@ -239,8 +239,8 @@ from infiller.lib.model.network import TransformerModel
 from lib.eval_utils.custom_utils import cam2world_convert, load_slam_cam
 from lib.eval_utils.filling_utils import filling_postprocess, filling_preprocess
 
-INFILLER_WEIGHT = "./weights/hawor/checkpoints/infiller.pt"
-def hawor_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder, extrinsics=None):
+INFILLER_WEIGHT = "./weights/hamer/checkpoints/infiller.pt"
+def hamer_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder, extrinsics=None):
     # load infiller
     weight_path = INFILLER_WEIGHT
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -283,7 +283,7 @@ def hawor_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder,
         t_w2c_sla_all = t_w2c_sla.unsqueeze(0).expand(batch_size, 3)      # Shape becomes [b,3]
 
     else:
-        fpath = os.path.join(seq_folder, f"SLAM/hawor_slam_w_scale_{start_idx}_{end_idx}.npz")
+        fpath = os.path.join(seq_folder, f"SLAM/hamer_slam_w_scale_{start_idx}_{end_idx}.npz")
         R_w2c_sla_all, t_w2c_sla_all, R_c2w_sla_all, t_c2w_sla_all = load_slam_cam(fpath)
 
     pred_trans = torch.zeros(2, len(imgfiles), 3)
@@ -404,13 +404,13 @@ def hawor_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder,
 
 from lib.pipeline.masked_droid_slam import *
 from lib.pipeline.est_scale import *
-from hawor.utils.process import block_print, enable_print
+from hamer.utils.process import block_print, enable_print
 sys.path.insert(0, os.path.dirname(__file__) + '/thirdparty/Metric3D')
 
 from metric import Metric3D
 import math
 
-def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enable_camera_jitter=True):
+def hamer_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enable_camera_jitter=True):
     imgfiles = natsorted(glob(f'{img_folder}/*.png'))
 
     first_img = cv2.imread(imgfiles[0])
@@ -520,7 +520,7 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
 
     # Save results
     os.makedirs(f"{seq_folder}/SLAM", exist_ok=True)
-    save_path = f'{seq_folder}/SLAM/hawor_slam_w_scale_{start_idx}_{end_idx}.npz'
+    save_path = f'{seq_folder}/SLAM/hamer_slam_w_scale_{start_idx}_{end_idx}.npz'
     np.savez(save_path, 
             tstamp=tstamp, disps=disps, traj=traj, 
             img_focal=focal, img_center=calib[-2:],

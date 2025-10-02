@@ -10,11 +10,11 @@ from yacs.config import CfgNode
 
 from lib.datasets.track_dataset import TrackDatasetEval
 from lib.models.modules import MANOTransformerDecoderHead, temporal_attention
-from hawor.utils.pylogger import get_pylogger
-from hawor.utils.render_openpose import render_openpose
+from hamer.utils.pylogger import get_pylogger
+from hamer.utils.render_openpose import render_openpose
 from lib.utils.geometry import rot6d_to_rotmat_hmr2 as rot6d_to_rotmat
 from lib.utils.geometry import perspective_projection
-from hawor.utils.rotation import angle_axis_to_rotation_matrix
+from hamer.utils.rotation import angle_axis_to_rotation_matrix
 from torch.utils.data import default_collate
 
 from .backbones import create_backbone
@@ -24,16 +24,16 @@ from .mano_wrapper import MANO
 log = get_pylogger(__name__)
 idx = 0
 
-class HAWOR(pl.LightningModule):
+class HAMER(pl.LightningModule):
 
     def __init__(self, cfg: CfgNode):
         """
-        Setup HAWOR model
+        Setup HAMER model
         Args:
             cfg (CfgNode): Config file as a yacs CfgNode
         """
         super().__init__()
-        # print("init hawor model")
+        # print("init hamer model")
         # Save hyperparameters
         self.save_hyperparameters(logger=False, ignore=['init_renderer'])
 
@@ -410,8 +410,8 @@ class HAWOR(pl.LightningModule):
             with torch.no_grad():
                 batch = {k: v.to(device).unsqueeze(0) for k, v in batch.items() if type(v)==torch.Tensor}
                 # for image_i in range(16):
-                #     hawor_input_cv2 = vis_tensor_cv2(batch['img'][:, image_i])
-                #     cv2.imwrite(f'debug_vis_model.png', hawor_input_cv2)
+                #     hamer_input_cv2 = vis_tensor_cv2(batch['img'][:, image_i])
+                #     cv2.imwrite(f'debug_vis_model.png', hamer_input_cv2)
                 #     print("vis")
                 output = self.forward(batch)
                 out = output['out']
