@@ -6,7 +6,7 @@ python scripts/inference_service.py --server \
     --video_mode dual
 
 python lerobot/scripts/control_robot_gr00t.py record \
-  --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+  --robot-path lerobot/configs/robot/so100_plus_joycon_single.yaml \
   --fps 30 \
   --tags so100_plus tutorial eval \
   --warmup-time-s 5 \

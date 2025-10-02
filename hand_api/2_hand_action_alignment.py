@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""
-Batch update script for hand dataset.
-
-This script updates the data portion of all episodes in a dataset in batch, without modifying videos or other data.
-It recalculates and updates all parquet files using the data generation logic from hand_single_process_api.py.
-
-Usage:
-python update_handdataset.py --dataset_path /path/to/dataset
-"""
 
 import os
 import sys
@@ -47,17 +38,14 @@ def clean_nan_sequence(data_tensor):
     if data_tensor is None or data_tensor.numel() == 0:
         return data_tensor
     
-    # 确保是2D张量 [T, 1]
     if data_tensor.ndim == 1:
         data_tensor = data_tensor.unsqueeze(1)
     
     cleaned_tensor = data_tensor.clone()
     
-    # 对每一列进行前向填充
     for col in range(cleaned_tensor.shape[1]):
         col_data = cleaned_tensor[:, col]
         
-        # 找到第一个非NaN值作为初始值
         first_valid_idx = None
         for i in range(len(col_data)):
             if not torch.isnan(col_data[i]).any():
@@ -65,7 +53,6 @@ def clean_nan_sequence(data_tensor):
                 break
         
         if first_valid_idx is None:
-            # 如果所有值都是NaN，用0填充
             cleaned_tensor[:, col] = 0.0
             continue
         
@@ -138,39 +125,39 @@ def quaternion_to_rpy(quaternion):
 
 def rotation_matrix_to_rpy(rotation_matrix, order='ZYX'):
     """
-    将旋转矩阵转换为欧拉角。
-    支持两种顺序：
-        - 'ZYX'（默认）：roll-pitch-yaw（即绕Z、Y、X轴，常用于RPY）
-        - 'XYZ'：欧拉角（即绕X、Y、Z轴）
-    输入:
-        rotation_matrix: (..., 3, 3) 的张量
-        order: 'ZYX' 或 'XYZ'
-    输出:
-        euler: (..., 3) 的张量，分别为对应顺序的欧拉角
+    Convert rotation matrix to Euler angles.
+    Supports two orders:
+        - 'ZYX' (default): roll-pitch-yaw (i.e., around Z, Y, X axes, commonly used for RPY)
+        - 'XYZ': Euler angles (i.e., around X, Y, Z axes)
+    Input:
+        rotation_matrix: (..., 3, 3) tensor
+        order: 'ZYX' or 'XYZ'
+    Output:
+        euler: (..., 3) tensor, representing Euler angles in the specified order
     """
-    # 保证输入为张量
+    # Ensure input is a tensor
     if not torch.is_tensor(rotation_matrix):
         rotation_matrix = torch.tensor(rotation_matrix, dtype=torch.float32)
-    # 展平为二维
+    # Flatten to 2D
     orig_shape = rotation_matrix.shape
     rotation_matrix = rotation_matrix.reshape(-1, 3, 3)
 
     if order.upper() == 'ZYX':
-        # RPY（roll-pitch-yaw，ZYX顺序）
+        # RPY (roll-pitch-yaw, ZYX order)
         r = torch.atan2(rotation_matrix[:, 2, 1], rotation_matrix[:, 2, 2])
         p = torch.asin(-rotation_matrix[:, 2, 0].clamp(-1.0, 1.0))
         y = torch.atan2(rotation_matrix[:, 1, 0], rotation_matrix[:, 0, 0])
         euler = torch.stack([r, p, y], dim=-1)
     elif order.upper() == 'XYZ':
-        # XYZ欧拉角
+        # XYZ Euler angles
         x = torch.atan2(-rotation_matrix[:, 1, 2], rotation_matrix[:, 2, 2])
         y = torch.asin(rotation_matrix[:, 0, 2].clamp(-1.0, 1.0))
         z = torch.atan2(-rotation_matrix[:, 0, 1], rotation_matrix[:, 0, 0])
         euler = torch.stack([x, y, z], dim=-1)
     else:
-        raise ValueError("order参数仅支持'ZYX'或'XYZ'")
+        raise ValueError("order parameter only supports 'ZYX' or 'XYZ'")
 
-    # 恢复原始批次维度
+    # Restore original batch dimensions
     if len(orig_shape) > 2:
         euler = euler.reshape(*orig_shape[:-2], 3)
     return euler
@@ -196,7 +183,6 @@ def find_longest_non_nan_sequence(data_tensor):
         print("Error: All values are NaN after cleaning")
         return None
 
-    # 如果所有值都是有效的，返回整个序列
     if is_not_nan.all():
         return (0, len(data_tensor) - 1)
 
@@ -243,17 +229,14 @@ def find_longest_non_nan_sequence(data_tensor):
 
 def compute_rotation_svd_robust(points_a: torch.Tensor, points_b: torch.Tensor, weights: torch.Tensor = None) -> torch.Tensor:
     """Compute rotation matrix between two point sets using weighted SVD."""
-    # 检查输入是否包含非有限值
     if not torch.isfinite(points_a).all() or not torch.isfinite(points_b).all():
         print("Warning: Input contains non-finite values, cleaning...")
-        # 使用更智能的清理方法
         points_a = clean_nan_sequence(points_a)
         points_b = clean_nan_sequence(points_b)
         
         # 再次检查
         if not torch.isfinite(points_a).all() or not torch.isfinite(points_b).all():
             print("Error: Failed to clean non-finite values, using identity matrix")
-            # 返回单位矩阵作为fallback
             if points_a.dim() == 2:
                 return torch.eye(3, device=points_a.device, dtype=points_a.dtype)
             else:
@@ -376,7 +359,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         # 3. SLAM
         slam_path = os.path.join(seq_folder, f"SLAM/hawor_slam_w_scale_{start_idx}_{end_idx}.npz")
         if not os.path.exists(slam_path):
-            # 优先尝试复用旧SLAM（仅当当前序列是旧序列的尾部截断时）
             try:
                 slam_dir = os.path.join(seq_folder, "SLAM")
                 os.makedirs(slam_dir, exist_ok=True)
@@ -392,7 +374,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
                     except Exception:
                         return None
 
-                # 只考虑 start_idx 相同且旧 end_idx >= 新 end_idx 的文件，优先选择 end_idx 最大的
                 reusable = []
                 for fname in candidate_files:
                     se = parse_start_end(fname)
@@ -419,7 +400,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
                             print(f"Skip reuse {fname}: missing keys")
                             continue
 
-                        # 仅保留 tstamp < len(imgfiles) 的关键帧，保证与新图像序列对齐
                         max_valid_idx = len(imgfiles) - 1
                         valid_mask = tstamp <= max_valid_idx
                         if valid_mask.sum() < 2:
@@ -438,17 +418,14 @@ def update_episode_data(episode_path, coordinate_transformed=True,
                                  img_focal=img_focal,
                                  img_center=img_center,
                                  scale=scale)
-                        print(f"复用并截断旧SLAM成功: {fname} -> {os.path.basename(slam_path)} (frames={len(imgfiles)})")
                         reused = True
                         break
                     except Exception as e:
                         print(f"Failed to reuse {fname}: {e}")
 
                 if not reused:
-                    # 无可复用旧文件，再运行SLAM
                     hawor_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
             except Exception as e:
-                print(f"SLAM复用流程异常，回退到重跑：{e}")
                 hawor_slam(episode_path, start_idx, end_idx, seq_folder, enable_camera_jitter=True)
 
         if not os.path.exists(slam_path):
@@ -465,20 +442,17 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         def print_nan_indices(tensor, name):
             if torch.isnan(tensor).any():
                 non_nan_indices = torch.nonzero(~torch.isnan(tensor), as_tuple=False)
-                print(f"{name} 非NaN数据索引如下：")
                 print(non_nan_indices)
                 return min(non_nan_indices[:,0]), max(non_nan_indices[:,0])
             else:
                 return 0,len(tensor)-1
 
 
-        # clean step1 
         start_idx_trans,end_idx_trans=print_nan_indices(pred_trans[1], "pred_trans")
         start_idx_rot,end_idx_rot=print_nan_indices(pred_rot[1], "pred_rot")
         start_idx_hand_pose,end_idx_hand_pose=print_nan_indices(pred_hand_pose[1], "pred_hand_pose")
         start_idx_betas,end_idx_betas=print_nan_indices(pred_betas[1], "pred_betas")
         
-        # 检查是否有有效数据
         if any(idx is None for idx in [start_idx_trans, start_idx_rot, start_idx_hand_pose, start_idx_betas]):
             print(f"Skipping {episode_path}: Some data contains all NaN values")
             return None
@@ -496,7 +470,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         t_w2c_sla_all = t_w2c_sla_all[start_idx:end_idx, :]
         R_c2w_sla_all = R_c2w_sla_all[start_idx:end_idx, :]
         t_c2w_sla_all = t_c2w_sla_all[start_idx:end_idx, :]
-
 
         # Select hand
         if len(valid_hand) == 1:
@@ -539,58 +512,27 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         )
         cam_joints = pred_glob_cam['joints'].squeeze(0)
         
-        # 检查关节坐标是否包含NaN
-        if torch.isnan(cam_joints).any():
-            print(f"Warning: cam_joints contains {torch.isnan(cam_joints).sum()} NaN values")
-            print(f"cam_joints shape: {cam_joints.shape}")
-
         fingd_dict = compute_all_finger_distances(cam_joints)
         thumb_to_index_distance = fingd_dict["thumb_to_index_distance"]
         
-        # 检查手指距离是否包含NaN值
         if torch.isnan(thumb_to_index_distance).any():
             print(f"Warning: thumb_to_index_distance contains {torch.isnan(thumb_to_index_distance).sum()} NaN values")
             print(f"thumb_to_index_distance shape: {thumb_to_index_distance.shape}")
-            # 使用前向填充方法清理NaN值
             thumb_to_index_distance = clean_nan_sequence(thumb_to_index_distance)
         
         open_distance = (thumb_to_index_distance * 100).detach()
         
-        # 先获取open_distance的最大值和最小值，再进行线性映射
         open_min = open_distance.min()
         open_max = open_distance.max()
         print(f"open_distance range: [{open_min:.4f}, {open_max:.4f}]")
 
-        # 将open_distance中最小的30%设置为最小值（基于排序）
         n = open_distance.shape[0]
         print(f"open_distance shape: {open_distance.shape}")
         tail_num = int(n * 0.3)
-        # 修正：确保tail_num不超过n且大于0，并且指定dim参数
-        if 0 < tail_num <= n:
-            # 指定dim=0，确保在正确的维度上排序
-            _, indices = torch.topk(open_distance, tail_num, largest=False, dim=0)
-            open_distance[indices] = open_min
 
-        # 线性映射至[14,90]
         open_distance = (open_distance - open_min) / (open_max - open_min) * (90 - 14) + 14
 
         if coordinate_transformed:
-            # cam_to_base_matrix = torch.tensor([
-            #     [-0.48238306, -0.37595801,  0.7911777,   0.01460186],
-            #     [-0.84657845,  0.4320609,  -0.31085096,  0.20225367],
-            #     [-0.22497004, -0.81974323, -0.5266968,   0.41582841],
-            #     [ 0.0,          0.0,          0.0,          1.0]
-            # ], dtype=cam_trans_wrist.dtype, device=cam_trans_wrist.device)
-
-            # cam_to_base_matrix = torch.tensor([
-            #     [ 0.00824967, -0.99953842,  0.02923837, 0.215],
-            #     [-0.99247578, -0.01175646, -0.12187538,  -0.085 ],
-            #     [-0.12216287,  0.02801294,  0.99211467,  -0.585 ],
-            #     [ 0.0        ,  0.0        ,  0.0        ,  1.0 ]
-            # ], dtype=torch.float32)
-
-            # R = cam_to_base_matrix[:3, :3].to(cam_trans_wrist.device)
-            # t = cam_to_base_matrix[:3, 3].to(cam_trans_wrist.device)
 
             R = torch.tensor([
             [0.99969799, -0.01875905,  0.0158754],
@@ -605,7 +547,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             base_trans_wrist = torch.matmul(cam_trans_wrist, R.T) + t
             base_joints = torch.matmul(cam_joints.to(cam_trans_wrist.device), R.T) + t
             
-            # 先计算rpy再进行修正
             thumb_pip_base = base_joints[:, 3, :].unsqueeze(1)
             thumb_mcp_base = base_joints[:, 4, :].unsqueeze(1)
             index_mcp_base = base_joints[:, 5, :].unsqueeze(1)
@@ -627,20 +568,14 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             print(f"points_base.shape:{points_base.shape}")
             R_thenar = compute_rotation_svd_robust(points_local, points_base, weights=None)
 
-            # 由于标定变化，先使用0 
             base_root_r = -(math.pi + rotation_matrix_to_rpy(R_thenar, order='ZYX')[:, 0])
 
-            # 保证base_root_r在[-pi, pi]区间
             base_root_r = (base_root_r + math.pi) % (2 * math.pi) - math.pi
 
-            # !!!!!!!!!!!!!!!!!!!!!!!!左手为-，右手为+!!!!!!!!!!!!!!!!!!!!!!!
             base_root_r = base_root_r + 1.6
-            # 保证base_root_r在[0, pi]区间
             base_root_r = base_root_r % (math.pi/2)
            
-            # !!!!!!!!!!!!!!!!!!!!!!!!注意区分左右手!!!!!!!!!!!!!!!!!!!!!!!
             base_root_p = -rotation_matrix_to_rpy(R_thenar, order='ZYX')[:, 1]
-            # 控制base_root_p在(0, pi/2)区间
             base_root_p = base_root_p.clamp(min=1e-6, max=math.pi/2 - 1e-6)
             base_root_y = torch.zeros_like(base_root_p)
             base_root_rpy = torch.stack([base_root_r, base_root_p, base_root_y], dim=1)
@@ -649,15 +584,12 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             base_rotmat = torch.matmul(cam_root_rotmat, R.T)
             base_root_orient_aa = rotation_matrix_to_angle_axis(base_rotmat)
 
-            # 调整base_trans_wrist和base_joints的x轴坐标,由于摄像头安装高度不同导致误差
             base_trans_wrist[:,0] = base_trans_wrist[:,0] + 0.14
             base_joints[:,:,0] = base_joints[:,:,0] + 0.14
 
-            # 调整base_trans_wrist和base_joints的y轴坐标,由于摄像头安装高度不同导致误差
             base_trans_wrist[:,1] = base_trans_wrist[:,1] + 0.1
             base_joints[:,:,1] = base_joints[:,:,1] + 0.1
 
-            # 调整base_trans_wrist和base_joints的z轴坐标,由于摄像头安装高度不同导致误差
             base_trans_wrist[:,-1] = base_trans_wrist[:,-1] - 0.28
             base_joints[:,:,-1] = base_joints[:,:,-1] - 0.28
 
@@ -666,7 +598,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             base_trans_wrist = cam_trans_wrist
             base_joints = cam_joints
             base_root_orient_aa = cam_root_orient_aa
-
 
         # 8. Prepare data
         if eef_type == "wrist_joint":
@@ -687,50 +618,12 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             cam_root_orient_rpy = quaternion_to_rpy(cam_root_orient_quat).to(cam_trans.device)
             base_root_orient_rpy = base_root_rpy
 
-            # 需要对z轴进行线性映射至[-0.01, max(0.16, max(base_trans_wrist[:,-1]))]
             first_frame_z = base_trans[0, -1]
 
-            # 如果first_frame_z小于0.176，则将所有z值线性缩放，使得first_frame_z变为0.176，其余点等比例缩放
             if float(first_frame_z) < 0.13:
                 scale = 0.13 / float(first_frame_z) if abs(float(first_frame_z)) > 1e-8 else 1.0
-                print(f"first_frame_z={first_frame_z:.5f} < 0.2，进行缩放，缩放比例为 {scale:.5f}")
                 base_trans[:, -1] = base_trans[:, -1] * scale
-            # else:
-            #     min_z = base_trans[:, -1].min()
-            #     max_z = base_trans[:, -1].max()
-            #     target_min = -0.03
-            #     target_max = max(0.176, float(max_z))
-            #     print(f"z轴线性映射: 原始min={min_z:.5f}, max={max_z:.5f}，目标区间=[{target_min}, {target_max}]")
-            #     if abs(max_z - min_z) < 1e-8:
-            #         base_trans[:, -1] = target_min
-            #     else:
-            #         base_trans[:, -1] = (base_trans[:, -1] - min_z) / (max_z - min_z) * (target_max - target_min) + target_min
-
-        # smooth
-        def exponential_smoothing(tensor, alpha=0.1):
-            """
-            指数移动平均平滑
-            
-            Args:
-                tensor: 形状为 [L, N] 的 tensor
-                alpha: 平滑因子 (0 < alpha < 1)，越小越平滑
-            
-            Returns:
-                平滑后的 tensor
-            """
-            L, N = tensor.shape
-            smoothed = torch.zeros_like(tensor)
-            smoothed[0] = tensor[0]  # 第一个元素保持不变
-            
-            for i in range(1, L):
-                smoothed[i] = alpha * tensor[i] + (1 - alpha) * smoothed[i-1]
-            
-            return smoothed 
-
-        base_trans = exponential_smoothing(base_trans, alpha=0.2)
-        base_root_orient_rpy = exponential_smoothing(base_root_orient_rpy, alpha=0.1)
-
-
+       
         # 9. Find longest valid sequence
         longest_seq_trans_x = find_longest_non_nan_sequence(base_trans[:,0].cpu())
         longest_seq_trans_y = find_longest_non_nan_sequence(base_trans[:,1].cpu())
@@ -750,14 +643,6 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         base_trans=torch.cat([base_trans_x,base_trans_y,base_trans_z],dim=-1)
         base_root_orient_rpy=torch.cat([base_root_orient_rpy_r,base_root_orient_rpy_p,base_root_orient_rpy_y],dim=-1)
 
-        print(f"longest_seq_trans_x: {longest_seq_trans_x[0]}, {longest_seq_trans_x[1]}")
-        print(f"longest_seq_trans_y: {longest_seq_trans_y[0]}, {longest_seq_trans_y[1]}")
-        print(f"longest_seq_trans_z: {longest_seq_trans_z[0]}, {longest_seq_trans_z[1]}")
-
-        print(f"longest_seq_rpy_r: {longest_seq_rpy_r[0]}, {longest_seq_rpy_r[1]}")
-        print(f"longest_seq_rpy_p: {longest_seq_rpy_p[0]}, {longest_seq_rpy_p[1]}")
-        print(f"longest_seq_rpy_y: {longest_seq_rpy_y[0]}, {longest_seq_rpy_y[1]}")
-
         longest_seq_trans_start = max(longest_seq_trans_x[0], longest_seq_trans_y[0], longest_seq_trans_z[0])
         longest_seq_trans_end = min(longest_seq_trans_x[1], longest_seq_trans_y[1], longest_seq_trans_z[1])
 
@@ -765,16 +650,10 @@ def update_episode_data(episode_path, coordinate_transformed=True,
         longest_seq_rpy_end = min(longest_seq_rpy_r[1], longest_seq_rpy_p[1], longest_seq_rpy_y[1])
 
         if longest_seq_trans_start is None or longest_seq_trans_end is None or longest_seq_rpy_start is None or longest_seq_rpy_end is None:
-            print(f"Skipping {episode_path}: No valid non-NaN sequence found")
             return None
 
         k_start = max(longest_seq_trans_start, longest_seq_rpy_start)
         k_end = min(longest_seq_trans_end, longest_seq_rpy_end)
-
-        print(f"k_start: {k_start}, k_end: {k_end}")
-
-        seq_len = k_end - k_start + 1
-        print(f"Found longest non-NaN sequence: index {k_start} to {k_end} (inclusive), length {seq_len}")
 
         state_indices = torch.arange(k_start, k_end)
         action_indices = torch.arange(k_start + 1, k_end + 1)
@@ -811,7 +690,7 @@ def update_episode_data(episode_path, coordinate_transformed=True,
             return None
 
         if interpolation_factor > 0:
-            original_start_time = (start_idx+k_start) * (1.0 / 30.0) * interpolation_factor  # 原始起始时间
+            original_start_time = (start_idx+k_start) * (1.0 / 30.0) * interpolation_factor  
         else:
             original_start_time = (start_idx+k_start) * (1.0 / 30.0)
 
@@ -962,16 +841,10 @@ def batch_update_dataset(dataset_path, coordinate_transformed=True,
     print(f"Failed: {failed_updates}")
     print(f"Skipped: {skipped_episodes}")
 
-    if successful_updates == total_episodes:
-        print("🎉 All episodes updated successfully!")
-    elif successful_updates > 0:
-        print(f"⚠️ Some episodes updated successfully ({successful_updates}/{total_episodes})")
-    else:
-        print("❌ No episodes updated successfully")
 
 def main():
     parser = argparse.ArgumentParser(description="Batch update all episode data in the dataset")
-    parser.add_argument("--dataset_path", type=str,default=r"/home/admin123/projects_lerobot/Easymimic/lerobot-joycon_plus/datasets/pinkduck/human/human_23_pink_duck_0831_true_full_hand_thenar_middle_joint_0_2_clear", help="Root path of the dataset")
+    parser.add_argument("--dataset_path", type=str,default=r"/path/to/datasets/human_example_processed", help="Path of the dataset")
     parser.add_argument("--coordinate_transformed", type=bool, default=True, help="Whether to transform coordinates")
     parser.add_argument("--eef_type", type=str, default="thenar_middle_joint",
                         choices=["wrist_joint", "tip_middle_joint", "thenar_middle_joint"],

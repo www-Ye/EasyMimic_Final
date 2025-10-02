@@ -11,11 +11,8 @@ def detect_track_video(img_folder):
     os.makedirs(img_folder, exist_ok=True)
     print(f'Running detect_track on {img_folder} ...')
 
-    ##### Extract Frames #####
     imgfiles = natsorted(glob(f'{img_folder}/*.png'))
-    # print(imgfiles)
 
-    ##### Detection + Track #####
     print('Detect and Track ...')
 
     start_idx = 0
@@ -74,8 +71,6 @@ def hawor_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_foca
     model = model.to(device)
     model.eval()
 
-    # img_folder = f"{video_root}/{video}/extracted_images"
-    # imgfiles = np.array(natsorted(glob(f'{img_folder}/*.jpg')))
     imgfiles = np.array(natsorted(glob(f'{img_folder}/*.png')))
 
     tracks = np.load(f'{seq_folder}/tracks_{start_idx}_{end_idx}/model_tracks.npy', allow_pickle=True).item()
@@ -85,8 +80,6 @@ def hawor_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_foca
                 img_focal = file.read()
                 img_focal = float(img_focal)
         except:
-            #需要修改成当前相机的
-            img_focal = 387.8267517089844
             print(f'No focal length provided, use default {img_focal}')
             with open(os.path.join(seq_folder, 'est_focal.txt'), 'w') as file:
                 file.write(str(img_focal))
@@ -120,7 +113,6 @@ def hawor_motion_estimation(img_folder, start_idx, end_idx, seq_folder, img_foca
     }
     tid = [0, 1]
 
-    # print(imgfiles)
     img = cv2.imread(imgfiles[0])
     img_center = [img.shape[1] / 2, img.shape[0] / 2]# w/2, h/2  
     H, W = img.shape[:2]
@@ -284,22 +276,22 @@ def hawor_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder,
     filling_length = 120
 
     if extrinsics is not None:
-        # 世界坐标系到相机坐标系(w2c)
-        R_w2c_sla = torch.from_numpy(extrinsics[:3, :3]).to(torch.float32)  # 旋转矩阵(3x3)
-        t_w2c_sla = torch.from_numpy(extrinsics[:3, 3]).to(torch.float32)   # 平移向量(3x1)
+        # World coordinate system to camera coordinate system (w2c)
+        R_w2c_sla = torch.from_numpy(extrinsics[:3, :3]).to(torch.float32)  # Rotation matrix (3x3)
+        t_w2c_sla = torch.from_numpy(extrinsics[:3, 3]).to(torch.float32)   # Translation vector (3x1)
 
-        # 相机坐标系到世界坐标系(c2w)
+        # Camera coordinate system to world coordinate system (c2w)
         extrinsics_inverse = np.linalg.inv(extrinsics)
-        R_c2w_sla = torch.from_numpy(extrinsics_inverse[:3, :3]).to(torch.float32)  # 旋转矩阵(3x3)
-        t_c2w_sla = torch.from_numpy(extrinsics_inverse[:3, 3]).to(torch.float32)   # 平移向量(3x1)
+        R_c2w_sla = torch.from_numpy(extrinsics_inverse[:3, :3]).to(torch.float32)  # Rotation matrix (3x3)
+        t_c2w_sla = torch.from_numpy(extrinsics_inverse[:3, 3]).to(torch.float32)   # Translation vector (3x1)
 
-        # 添加批次维度
-        batch_size = len(imgfiles)  # 您需要的批次大小
-        R_c2w_sla_all = R_c2w_sla.unsqueeze(0).expand(batch_size, 3, 3)  # 形状变为 [b,3,3]
-        t_c2w_sla_all = t_c2w_sla.unsqueeze(0).expand(batch_size, 3)      # 形状变为 [b,3]
+        # Add batch dimension
+        batch_size = len(imgfiles)  # The batch size you need
+        R_c2w_sla_all = R_c2w_sla.unsqueeze(0).expand(batch_size, 3, 3)  # Shape becomes [b,3,3]
+        t_c2w_sla_all = t_c2w_sla.unsqueeze(0).expand(batch_size, 3)      # Shape becomes [b,3]
 
-        R_w2c_sla_all = R_w2c_sla.unsqueeze(0).expand(batch_size, 3, 3)  # 形状变为 [b,3,3]
-        t_w2c_sla_all = t_w2c_sla.unsqueeze(0).expand(batch_size, 3)      # 形状变为 [b,3]
+        R_w2c_sla_all = R_w2c_sla.unsqueeze(0).expand(batch_size, 3, 3)  # Shape becomes [b,3,3]
+        t_w2c_sla_all = t_w2c_sla.unsqueeze(0).expand(batch_size, 3)      # Shape becomes [b,3]
         # print(R_c2w)
         # print(t_c2w)
         # breakpoint()
@@ -329,7 +321,7 @@ def hawor_infiller(img_folder, start_idx, end_idx, frame_chunks_all, seq_folder,
             pred_path = os.path.join(seq_folder, 'cam_space', str(idx), f"{frame_ck[0]}_{frame_ck[-1]}.json")
             with open(pred_path, "r") as f:
                 pred_dict = json.load(f)
-            # print(f"JSON格式中init_root_orient的形状: {np.array(pred_dict['init_root_orient']).shape}")
+            # print(f"Shape of init_root_orient in JSON format: {np.array(pred_dict['init_root_orient']).shape}")
             data_out = {
                 k:torch.tensor(v) for k, v in pred_dict.items()
                 }
@@ -430,22 +422,11 @@ from lib.pipeline.masked_droid_slam import *
 from lib.pipeline.est_scale import *
 from hawor.utils.process import block_print, enable_print
 sys.path.insert(0, os.path.dirname(__file__) + '/thirdparty/Metric3D')
-# print(os.path.dirname(__file__))
-# sys.path.insert(0, os.path.dirname(__file__) + 'thirdparty/Metric3D')
+
 from metric import Metric3D
 import math
 
 def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enable_camera_jitter=True):
-    # File and folders
-    # file = args.video_path
-    # video_root = os.path.dirname(file)
-    # video = os.path.basename(file).split('.')[0]
-    # seq_folder = os.path.join(video_root, video)
-    # os.makedirs(seq_folder, exist_ok=True)
-    # seq_folder = os.path.join(video_root, video)
-
-    # img_folder = f'{seq_folder}/extracted_images'
-    # imgfiles = natsorted(glob(f'{img_folder}/*.jpg'))
     imgfiles = natsorted(glob(f'{img_folder}/*.png'))
 
     first_img = cv2.imread(imgfiles[0])
@@ -453,7 +434,7 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
     
     print(f'Running slam on {seq_folder} ...')
     if enable_camera_jitter:
-        print('启用相机抖动模式以增强SLAM稳定性')
+        print('Enable camera jitter mode to enhance SLAM stability')
 
     ##### Run SLAM #####
     # Use Masking
@@ -483,9 +464,9 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
     slam_success = False
     final_error = None
     
-    # 先尝试不使用相机抖动
+    # First try without camera jitter
     try:
-        print("尝试不使用相机抖动运行SLAM...")
+        print("Attempting to run SLAM without camera jitter...")
         droid, traj = run_slam(imgfiles, masks=masks, calib=calib, enable_camera_jitter=False)
         slam_success = True
         print("✓ SLAM without camera jitter succeeded")
@@ -493,10 +474,10 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
         print(f"✗ SLAM without camera jitter failed: {e}")
         final_error = e
 
-    # 如果失败则尝试使用相机抖动
+    # If failed, try with camera jitter
     if not slam_success and enable_camera_jitter:
         try:
-            print("尝试使用相机抖动运行SLAM...")
+            print("Attempting to run SLAM with camera jitter...")
             droid, traj = run_slam(imgfiles, masks=masks, calib=calib, enable_camera_jitter=True)
             slam_success = True
             print("✓ SLAM with camera jitter succeeded")
@@ -506,7 +487,7 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
     
     
     if not slam_success:
-        print(f"所有SLAM尝试都失败了，最后错误: {final_error}")
+        print(f"All SLAM attempts failed, final error: {final_error}")
         raise final_error
     n = droid.video.counter.value
     tstamp = droid.video.tstamp.cpu().int().numpy()[:n]
@@ -564,52 +545,51 @@ def hawor_slam(img_folder, start_idx, end_idx, seq_folder, img_focal=None, enabl
 
 def compute_all_finger_distances(joints):
     """
-    计算MANO模型中大拇指末端到其他所有手指末端的距离
+    Calculate distances from thumb tip to all other finger tips in MANO model
     
-    参数:
-    joints: torch.Tensor - MANO模型输出的关节点坐标
-            形状可以是 [batch_size, time_steps, 21, 3] 或 [time_steps, 21, 3]
+    Parameters:
+    joints: torch.Tensor - Joint coordinates output from MANO model
+            Shape can be [batch_size, time_steps, 21, 3] or [time_steps, 21, 3]
     
-    返回:
-    包含所有距离的字典，每个距离的形状为 [time_steps, 1]
+    Returns:
+    Dictionary containing all distances, each distance has shape [time_steps, 1]
     """
-    # 处理输入维度
+    # Handle input dimensions
     if len(joints.shape) == 3:  # [time_steps, 21, 3]
-        joints = joints.unsqueeze(0)  # 添加批次维度 [1, time_steps, 21, 3]
+        joints = joints.unsqueeze(0)  # Add batch dimension [1, time_steps, 21, 3]
     
     batch_size, time_steps, num_joints, _ = joints.shape
     
-    # MANO模型中的关节索引
-    wrist_idx = 0       # 手腕根节点索引
-    thumb_mcp_idx = 1   # 大拇指掌指关节索引
-    thumb_pip_idx = 2   # 大拇指近指间关节索引
-    thumb_dip_idx = 3   # 大拇指远指间关节索引
-    thumb_tip_idx = 4   # 大拇指末端节点索引
-    index_mcp_idx = 5   # 食指掌指关节索引
-    index_pip_idx = 6   # 食指近指间关节索引
-    index_dip_idx = 7   # 食指远指间关节索引
-    index_tip_idx = 8   # 食指末端节点索引
-    middle_mcp_idx = 9  # 中指掌指关节索引
-    middle_pip_idx = 10 # 中指近指间关节索引
-    middle_dip_idx = 11 # 中指远指间关节索引
-    middle_tip_idx = 12 # 中指末端节点索引
-    ring_mcp_idx = 13   # 无名指掌指关节索引
-    ring_pip_idx = 14   # 无名指近指间关节索引
-    ring_dip_idx = 15   # 无名指远指间关节索引
-    ring_tip_idx = 16   # 无名指末端节点索引
-    pinky_mcp_idx = 17  # 小拇指掌指关节索引
-    pinky_pip_idx = 18  # 小拇指近指间关节索引
-    pinky_dip_idx = 19  # 小拇指远指间关节索引
-    pinky_tip_idx = 20  # 小拇指末端节点索引
+    # Joint indices in MANO model
+    wrist_idx = 0       # Wrist root joint index
+    thumb_mcp_idx = 1   # Thumb metacarpophalangeal joint index
+    thumb_pip_idx = 2   # Thumb proximal interphalangeal joint index
+    thumb_dip_idx = 3   # Thumb distal interphalangeal joint index
+    thumb_tip_idx = 4   # Thumb tip joint index
+    index_mcp_idx = 5   # Index metacarpophalangeal joint index
+    index_pip_idx = 6   # Index proximal interphalangeal joint index
+    index_dip_idx = 7   # Index distal interphalangeal joint index
+    index_tip_idx = 8   # Index tip joint index
+    middle_mcp_idx = 9  # Middle metacarpophalangeal joint index
+    middle_pip_idx = 10 # Middle proximal interphalangeal joint index
+    middle_dip_idx = 11 # Middle distal interphalangeal joint index
+    middle_tip_idx = 12 # Middle tip joint index
+    ring_mcp_idx = 13   # Ring metacarpophalangeal joint index
+    ring_pip_idx = 14   # Ring proximal interphalangeal joint index
+    ring_dip_idx = 15   # Ring distal interphalangeal joint index
+    ring_tip_idx = 16   # Ring tip joint index
+    pinky_mcp_idx = 17  # Pinky metacarpophalangeal joint index
+    pinky_pip_idx = 18  # Pinky proximal interphalangeal joint index
+    pinky_dip_idx = 19  # Pinky distal interphalangeal joint index
+    pinky_tip_idx = 20  # Pinky tip joint index
     
-    # 获取各指尖坐标
+    # Get fingertip coordinates
     thumb_tip = joints[:, :, thumb_tip_idx]   # [batch_size, time_steps, 3]
     index_tip = joints[:, :, index_tip_idx]   # [batch_size, time_steps, 3]
     middle_tip = joints[:, :, middle_tip_idx]  # [batch_size, time_steps, 3]
     ring_tip = joints[:, :, ring_tip_idx]     # [batch_size, time_steps, 3]
     pinky_tip = joints[:, :, pinky_tip_idx]   # [batch_size, time_steps, 3]
     
-    # 计算欧几里得距离
     thumb_to_index_distance = torch.norm(thumb_tip - index_tip, dim=2).view(time_steps, 1)
     thumb_to_middle_distance = torch.norm(thumb_tip - middle_tip, dim=2).view(time_steps, 1)
     thumb_to_ring_distance = torch.norm(thumb_tip - ring_tip, dim=2).view(time_steps, 1)
@@ -624,7 +604,7 @@ def compute_all_finger_distances(joints):
 
 def computer_thumb_index_thenar_midpoint(joints):
     """
-    计算大拇指近指间关节和食指掌指关节中点
+    Calculate midpoint between thumb proximal interphalangeal joint and index metacarpophalangeal joint
     
     MANO Joint Index Reference:
     0: wrist, 1-4: thumb (1=CMC, 2=MCP, 3=IP, 4=tip), 5-8: index (5=MCP, 6=PIP, 7=DIP, 8=tip),
@@ -632,12 +612,12 @@ def computer_thumb_index_thenar_midpoint(joints):
     17-20: pinky (17=MCP, 18=PIP, 19=DIP, 20=tip)
     """
     if len(joints.shape) == 3:  # [time_steps, 21, 3]
-        joints = joints.unsqueeze(0)  # 添加批次维度 [1, time_steps, 21, 3]
+        joints = joints.unsqueeze(0)  # Add batch dimension [1, time_steps, 21, 3]
     
     batch_size, time_steps, num_joints, _ = joints.shape
 
-    thumb_pip_idx = 2   # 大拇指近指间关节索引 (thumb MCP)
-    index_mcp_idx = 5   # 食指掌指关节索引 (index MCP)
+    thumb_pip_idx = 2   # Thumb proximal interphalangeal joint index (thumb MCP)
+    index_mcp_idx = 5   # Index metacarpophalangeal joint index (index MCP)
     thumb_joint = joints[:, :, thumb_pip_idx]   # [batch_size, time_steps, 3]
     index_joint = joints[:, :, index_mcp_idx]   # [batch_size, time_steps, 3] 
     
@@ -645,7 +625,7 @@ def computer_thumb_index_thenar_midpoint(joints):
     print(f"  Thumb MCP (joint {thumb_pip_idx}): {thumb_joint[0,0] if thumb_joint.numel() > 0 else 'empty'}")
     print(f"  Index MCP (joint {index_mcp_idx}): {index_joint[0,0] if index_joint.numel() > 0 else 'empty'}")
     
-    # 计算食指和拇指中点
+    # Calculate midpoint between index and thumb
     midpoint = (thumb_joint + index_joint) / 2
     midpoint = midpoint.squeeze(0)
     print(f"  Computed midpoint: {midpoint[0] if midpoint.numel() > 0 else 'empty'}")
@@ -654,19 +634,19 @@ def computer_thumb_index_thenar_midpoint(joints):
 
 def computer_thumb_index_tip_midpoint(joints):
     """
-    计算食指和拇指指尖中点
+    Calculate midpoint between index and thumb fingertips
     """
     if len(joints.shape) == 3:  # [time_steps, 21, 3]
-        joints = joints.unsqueeze(0)  # 添加批次维度 [1, time_steps, 21, 3]
+        joints = joints.unsqueeze(0)  # Add batch dimension [1, time_steps, 21, 3]
     
     batch_size, time_steps, num_joints, _ = joints.shape
 
-    thumb_tip_idx = 4   # 大拇指末端节点索引
-    index_tip_idx = 8   # 食指末端节点索引
+    thumb_tip_idx = 4   # Thumb tip joint index
+    index_tip_idx = 8   # Index tip joint index
 
     thumb_tip = joints[:, :, thumb_tip_idx]   # [batch_size, time_steps, 3]
     index_tip = joints[:, :, index_tip_idx]   # [batch_size, time_steps, 3]
-    # 计算食指和拇指指尖中点
+    # Calculate midpoint between index and thumb fingertips
     midpoint = (thumb_tip + index_tip) / 2
     midpoint = midpoint.squeeze(0)
     return midpoint

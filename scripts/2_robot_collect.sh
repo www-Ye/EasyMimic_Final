@@ -1,5 +1,5 @@
 python lerobot/scripts/control_robot_reset.py record \
-    --robot-path lerobot/configs/robot/so100_plus_joycon_single_new.yaml \
+    --robot-path lerobot/configs/robot/so100_plus_joycon_single.yaml \
     --fps 30 \
     --tags so100 tutorial \
     --warmup-time-s 5 \

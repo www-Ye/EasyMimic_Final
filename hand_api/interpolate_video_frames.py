@@ -15,27 +15,27 @@ import torchvision.transforms.functional as F
 
 def linear_interpolate_frames(frame1, frame2, num_intermediate=1):
     """
-    在两帧之间进行简单的线性插值，生成中间帧。
+    Performs simple linear interpolation between two frames to generate intermediate frames.
 
-    参数:
-        frame1: 第一帧（numpy 数组）
-        frame2: 第二帧（numpy 数组）
-        num_intermediate: 需要生成的中间帧数量
+    Args:
+        frame1: The first frame (numpy array)
+        frame2: The second frame (numpy array)
+        num_intermediate: The number of intermediate frames to generate
 
-    返回:
-        插值生成的中间帧列表
+    Returns:
+        A list of interpolated intermediate frames
     """
-    interpolated_frames = []  # 用于存储插值帧的列表
+    interpolated_frames = []  # List to store interpolated frames
 
-    # 依次生成每一帧插值
+    # Generate each interpolated frame sequentially
     for i in range(1, num_intermediate + 1):
-        alpha = i / (num_intermediate + 1)  # 计算当前插值权重
-        # 线性插值公式：(1-alpha)*frame1 + alpha*frame2
+        alpha = i / (num_intermediate + 1)  # Calculate the current interpolation weight
+        # Linear interpolation formula: (1-alpha)*frame1 + alpha*frame2
         interpolated = (1 - alpha) * frame1 + alpha * frame2
-        # 转换为uint8类型并加入结果列表
+        # Convert to uint8 type and add to the result list
         interpolated_frames.append(interpolated.astype(np.uint8))
 
-    return interpolated_frames  # 返回所有插值帧
+    return interpolated_frames  # Return all interpolated frames
 
 
 def optical_flow_interpolate(frame1, frame2, num_intermediate=1):

@@ -1,26 +1,14 @@
-# [SO-100 robot arm](https://github.com/TheRobotStudio/SO-ARM100)
-
-# Requires installing extras packages
-# With pip: `pip install -e ".[feetech]"`
-# With poetry: `poetry install --sync --extras "feetech"`
-
-# See [tutorial](https://github.com/huggingface/lerobot/blob/main/examples/10_use_so100.md)
-
 _target_: lerobot.common.robot_devices.robots.manipulator.ManipulatorRobot
 robot_type: so100
 calibration_dir: .cache/calibration/so100_plus
 
-# `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
-# Set this to a positive scalar to have the same value for all motors, or a list that is the same length as
-# the number of motors in your follower arms.
+
 max_relative_target: null
 
 controllers:
   right:
     _target_: lerobot.common.robot_devices.controllers.joycon_controller_distance.JoyConController_plus
     name: right
-    # initial_position: [0.0, -3.14, 3.14, 0.0, 1.57, -0.157]
-    
     
 follower_arms:
   right:
@@ -39,19 +27,13 @@ follower_arms:
 cameras:
   webcam:
     _target_: lerobot.common.robot_devices.cameras.opencv.OpenCVCamera
-    camera_index: 6
+    camera_index: 2
     fps: 30
     width: 640
     height: 480
-    # Camera to robot base transformation matrix (4x4 homogeneous transform)
-    # cam_to_base_transform:
-    #   - [-0.81169184,  0.4615024,  -0.35801102, 0.3284896116]
-    #   - [ 0.58405581,  0.63508377, -0.50551698, 0.3234083946]
-    #   - [-0.00593032, -0.61942242, -0.78503547, 0.20284632207]
-    #   - [ 0.0,         0.0,         0.0,         1.0]
-  # phone:
-  #   _target_: lerobot.common.robot_devices.cameras.opencv.OpenCVCamera
-  #   camera_index: 1
-  #   fps: 30
-  #   width: 640
-  #   height: 480
+  phone:
+    _target_: lerobot.common.robot_devices.cameras.opencv.OpenCVCamera
+    camera_index: 1
+    fps: 30
+    width: 640
+    height: 480
