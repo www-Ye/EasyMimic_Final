@@ -122,7 +122,6 @@ from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.utils import busy_wait, safe_disconnect
 from lerobot.common.utils.utils import init_hydra_config, init_logging, log_say, none_or_int
 
-# gr00t 改动1 
 import numpy as np
 from service import ExternalRobotInferenceClient
 ########################################################################################
@@ -371,9 +370,6 @@ def record(
         #     task = input("Enter your task description: ")
 
         # Highly visible progress banner for current episode
-        print(
-            f"\n\033[1;96m==================== 正在采集 第 {recorded_episodes + 1}/{num_episodes} 集 ====================\033[0m"
-        )
         log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
         record_episode(
             dataset=dataset,
@@ -392,9 +388,6 @@ def record(
         # TODO(rcadene): add an option to enable teleoperation during reset
         # Skip reset for the last episode to be recorded
 
-        # 只有在没有触发“停止录制”事件（events["stop_recording"]为False），并且满足以下两种情况之一时，才会进入重置环境的流程：
-        # 1. 当前已录制的episode数量还没有达到倒数第二个（即还没录到最后一个episode），
-        # 2. 或者用户触发了“重新录制本轮episode”（events["rerecord_episode"]为True）。
         if not events["stop_recording"] and (
             (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
         ):
@@ -616,11 +609,6 @@ if __name__ == "__main__":
         nargs="*",
         help="Any key=value arguments to override config values (use dots for.nested=overrides)",
     )
-    # 这些参数用于GR00T机器人控制
-    # --use-gr00t: 是否使用GR00T来控制机器人
-    # --host: GR00T机器人服务器的主机地址
-    # --port: GR00T机器人服务器的端口号
-    # --lang-instruction: 发送给GR00T的自然语言指令，用于指导机器人执行任务
     parser_record.add_argument("--use-gr00t", type=bool, default=False, help="Use gr00t to control the robot.")
     parser_record.add_argument("--host", type=str, default="192.168.1.100", help="Host of the gr00t robot.")
     parser_record.add_argument("--port", type=int, default=5555, help="Port of the gr00t robot.")

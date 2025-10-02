@@ -1,8 +1,3 @@
-########################################################################################
-# Utilities
-########################################################################################
-
-
 import logging
 import time
 import traceback
@@ -36,46 +31,45 @@ def apply_relative_transform(
     relative_pose: np.ndarray
 ) -> np.ndarray:
     """
-    将相对变换应用于绝对位姿。
+    Apply relative transformation to absolute pose.
 
-    给定一个绝对位姿 (pose A in world) 和一个相对于该位姿的变换 
-    (pose B relative to A)，计算第二个位姿在世界坐标系下的绝对位姿 
-    (pose B in world)。
+    Given an absolute pose (pose A in world) and a transformation relative to that pose 
+    (pose B relative to A), compute the absolute pose of the second pose in world coordinates 
+    (pose B in world).
 
     Args:
-        absolute_pose: NumPy 数组，形状为 (6,)，表示第一个位姿的绝对 
-                       [x, y, z, roll, pitch, yaw] (单位：米，弧度)。
-        relative_pose: NumPy 数组，形状为 (6,)，表示相对于第一个位姿的 
-                       [dx, dy, dz, droll, dpitch, dyaw] 变换。
-                       dx, dy, dz 是在第一个位姿的坐标系下定义的。
-                       droll, dpitch, dyaw 定义了从第一个位姿旋转到
-                       第二个位姿的旋转量。
+        absolute_pose: NumPy array with shape (6,), representing the absolute pose of the first 
+                       [x, y, z, roll, pitch, yaw] (units: meters, radians).
+        relative_pose: NumPy array with shape (6,), representing the transformation relative to the first pose
+                       [dx, dy, dz, droll, dpitch, dyaw].
+                       dx, dy, dz are defined in the coordinate system of the first pose.
+                       droll, dpitch, dyaw define the rotation from the first pose to
+                       the second pose.
 
     Returns:
-        NumPy 数组，形状为 (6,)，表示第二个位姿在世界坐标系下的绝对
-        [x, y, z, roll, pitch, yaw]。
+        NumPy array with shape (6,), representing the absolute pose of the second pose in world coordinates
+        [x, y, z, roll, pitch, yaw].
 
     Raises:
-        ValueError: 如果输入数组形状不正确。
+        ValueError: If input array shapes are incorrect.
     """
     if absolute_pose.shape != (6,) or relative_pose.shape != (6,):
         raise ValueError(f"Input poses must have shape (6,), but got {absolute_pose.shape} and {relative_pose.shape}")
 
-    # 1. 分解位姿
+    # 1. Decompose poses
     abs_xyz = absolute_pose[:3]
     abs_rpy = absolute_pose[3:]
     # abs_rpy[:2] = - abs_rpy[:2]
     
-    rel_xyz = relative_pose[:3] # 位移，定义在 abs_pose 的坐标系中
-    rel_rpy = relative_pose[3:] # 旋转，从 abs_pose 到 new_pose
-    # rel_rpy[:2] = - rel_rpy[:2]
+    rel_xyz = relative_pose[:3] # Translation, defined in abs_pose coordinate system
+    rel_rpy = relative_pose[3:] # Rotation, from abs_pose to new_pose
 
-    # 2. 处理旋转
+    # 2. Handle rotation
     try:
-        # 将绝对 RPY 转换为 Rotation 对象
+        # Convert absolute RPY to Rotation object
         rot_abs = R.from_euler(EULER_CONVENTION, abs_rpy)
         
-        # 将相对 RPY 转换为 Rotation 对象
+        # Convert relative RPY to Rotation object
         rot_rel = R.from_euler(EULER_CONVENTION, rel_rpy)
     except ValueError as e:
         print(f"Error creating Rotation object. Check EULER_CONVENTION ('{EULER_CONVENTION}') and RPY values.")
@@ -83,23 +77,22 @@ def apply_relative_transform(
         print(f"Relative RPY: {rel_rpy}")
         raise e
 
-    # 计算新的绝对旋转：组合旋转 R_new = R_abs * R_rel
-    # 注意：Scipy Rotation 的 * 运算符执行旋转组合
+    # Calculate new absolute rotation: combined rotation R_new = R_abs * R_rel
+    # Note: Scipy Rotation's * operator performs rotation composition
     rot_new_abs = rot_abs * rot_rel
 
-    # 将新的绝对旋转转换回 RPY
+    # Convert new absolute rotation back to RPY
     new_abs_rpy = rot_new_abs.as_euler(EULER_CONVENTION)
     # new_abs_rpy[:2] = - new_abs_rpy[:2]
 
-    # 3. 处理位置
-    # 将相对位移 (rel_xyz) 从 abs_pose 的坐标系旋转到世界坐标系
-    # 使用 abs_pose 的旋转 rot_abs 来完成
+    # 3. Handle position
+    # Rotate relative displacement (rel_xyz) from abs_pose coordinate system to world coordinate system
     world_delta_xyz = rot_abs.apply(rel_xyz)
 
-    # 将世界坐标系下的位移添加到绝对位置上
+    # Add world coordinate displacement to absolute position
     new_abs_xyz = abs_xyz + world_delta_xyz
 
-    # 4. 组合新的绝对位姿
+    # 4. Combine new absolute pose
     new_absolute_pose = np.concatenate((new_abs_xyz, new_abs_rpy))
 
     return new_absolute_pose
@@ -185,7 +178,6 @@ def predict_action(observation, policy, device, use_amp):
             observation[name] = observation[name].unsqueeze(0)
             observation[name] = observation[name].to(device)
 
-        # Compute the next action with the policy
         # based on the current observation
         action = policy.select_action(observation)
 
@@ -200,23 +192,7 @@ def predict_action(observation, policy, device, use_amp):
 
 def predict_action_gr00t(observation, policy, device, use_amp, action_space='abs', video_mode: str = 'dual'):
     observation = copy(observation)
-    # with (
-    #     torch.inference_mode(),
-    #     torch.autocast(device_type=device.type) if device.type == "cuda" and use_amp else nullcontext(),
-    # ):
-    # Convert to pytorch format: channel first and float32 in [0,1] with batch dimension
-    # for name in observation:
-    #     if "image" in name:
-    #         observation[name] = observation[name].type(torch.float32) / 255
-    #         observation[name] = observation[name].permute(2, 0, 1).contiguous()
-    #     observation[name] = observation[name].unsqueeze(0)
-        # observation[name] = observation[name].to(device)
-
-    # Compute the next action with the policy
-    # based on the current observation
-    # action = policy.select_action(observation)
     
-    # 获取两个相机的图像
     img_webcam = cv2.cvtColor(observation["observation.images.webcam"].numpy(), cv2.COLOR_BGR2RGB)
     img_phone = None
     video_count = 0
@@ -234,7 +210,6 @@ def predict_action_gr00t(observation, policy, device, use_amp, action_space='abs
     else:
         img_phone = None
 
-    print(f"推理使用视频数量: {video_count}")
     
     action = policy.get_action(img_webcam, img_phone, observation["observation.state"].numpy(), action_space)
 
@@ -250,7 +225,6 @@ def predict_action_gr00t(observation, policy, device, use_amp, action_space='abs
 def init_keyboard_listener():
     # Allow to exit early while recording an episode or resetting the environment,
     # by tapping the right arrow key '->'. This might require a sudo permission
-    # to allow your terminal to monitor keyboard events.
     events = {}
     events["exit_early"] = False
     events["rerecord_episode"] = False

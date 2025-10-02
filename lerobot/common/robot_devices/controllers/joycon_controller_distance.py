@@ -60,12 +60,12 @@ class JoyConController:
                     lerobot=True,
                     pitch_down_double=True
                 )
-                break  # 连接成功，跳出循环
+                break  # Connection successful, exit loop
             except Exception as e:
                 self.retries += 1
                 print(f"Failed to connect to {name} Joycon: {e}")
                 print(f"Retrying ({self.retries}/{self.max_retries}) in 1 second...")
-                time.sleep(1)  # 连接失败后等待 1 秒重试
+                time.sleep(1)  # Wait 1 second before retry after connection failure
         else:
             print("Failed to connect after several attempts.")
         
@@ -90,9 +90,9 @@ class JoyConController:
         _, _, _, roll, pitch, yaw = target_pose
         y = 0.01
         pitch = -pitch 
-        roll = roll - math.pi/2 # lerobo末端旋转90度
+        roll = roll - math.pi/2 # Rotate lerobot end effector by 90 degrees
         
-        # 双臂朝中间偏
+        # Dual arm bias towards center
         # if self.name == 'left':
         #     yaw = yaw - 0.4
         # elif self.name == 'right':
@@ -128,7 +128,7 @@ class JoyConController:
         return joint_angles, button_control
     
 
-from scipy.spatial.transform import Rotation as R # 引入 Rotation
+from scipy.spatial.transform import Rotation as R # Import Rotation
 
 class JoyConController_plus:
     def __init__(
@@ -155,11 +155,6 @@ class JoyConController_plus:
         self.target_gpos = self.init_gpos.copy()
         # print(f"self.target_gpos: {self.target_gpos}")
 
-        # gripper_state = self.target_gpos[-1]
-        # fd_qpos_mucojo = self.mjdata.qpos[self.qpos_indices][:6]
-        # qpos_inv_mujoco, IK_success = lerobot_IK(fd_qpos_mucojo, self.target_gpos[:6], robot=self.robot)
-        # if IK_success:
-        #     self.target_qpos = np.concatenate((qpos_inv_mujoco[:6], [gripper_state,]))
         self.target_gpos_for_ik = [0.21772567056163034, 0.0, 0.2, 0.0, 0.0, 0.0]
         
         self.mjdata.qpos[self.qpos_indices] = self.init_qpos   
@@ -178,12 +173,12 @@ class JoyConController_plus:
                                       gripper_close = -0.15,
                                       gripper_open = 0.5
                                       )
-                break  # 连接成功，跳出循环
+                break  # Connection successful, exit loop
             except Exception as e:
                 self.retries += 1
                 print(f"Failed to connect to {name} Joycon: {e}")
                 print(f"Retrying ({self.retries}/{self.max_retries}) in 1 second...")
-                time.sleep(1)  # 连接失败后等待 1 秒重试
+                time.sleep(1)  # Wait 1 second before retry after connection failure
         else:
             print("Failed to connect after several attempts.")
         
@@ -199,23 +194,23 @@ class JoyConController_plus:
     def get_sim_eef(self):
         qpos = self.mjdata.qpos[self.qpos_indices]
         eef_pos = lerobot_FK(qpos[:6], robot=self.robot)
-        distance = 75.38 * qpos[-1] + 24.31 # mm为单位
+        distance = 75.38 * qpos[-1] + 24.31 # In mm units
         # gripper_state = qpos[-1]
         eef_state = np.concatenate((eef_pos, [distance,]))
         return eef_state
 
     def get_eef(self, joint_angles, action_space="eef_rpy"):   # "aa"
-        joint_angles[0] = -joint_angles[0]  # 第0个关节角度再次取反
-        joint_angles[1] = -joint_angles[1]  # 第1个关节角度再次取反
-        joint_angles[3] = -joint_angles[3]  # 第3个关节角度再次取反
+        joint_angles[0] = -joint_angles[0]  
+        joint_angles[1] = -joint_angles[1]  
+        joint_angles[3] = -joint_angles[3]  
         qpos = np.deg2rad(joint_angles)
-        distance = 75.38 * qpos[-1] + 24.31 # mm为单位
+        distance = 75.38 * qpos[-1] + 24.31 # In mm units
         # gripper_state = qpos[-1]
         eef_pos = lerobot_FK(qpos[:6], robot=self.robot)
         # if "aa" in action_space:
         #     eef_pos[-3:] = rpy2aa(eef_pos[-3:])
         if "eef_rpy_midpoint" in action_space:
-            eef_pos = self.get_midpoint(eef_pos, qpos[-1], L=self.gripper_length)  # mm为单位
+            eef_pos = self.get_midpoint(eef_pos, qpos[-1], L=self.gripper_length)  # In mm units
         eef_state = np.concatenate((eef_pos, [distance,]))
         
         return eef_state
@@ -232,7 +227,7 @@ class JoyConController_plus:
 
         pose_transformed_for_limiting = np.array([x, y, z, roll_transformed, pitch_transformed, yaw])
 
-        # 5. 应用限制
+        # 5. Apply limits
         pose_limited_transformed = np.zeros_like(pose_transformed_for_limiting)
         for i in range(6):
             pose_limited_transformed[i] = np.clip(
@@ -243,26 +238,26 @@ class JoyConController_plus:
 
         x_lim_t, y_lim_t, z_lim_t, roll_lim_t, pitch_lim_t, yaw_lim_t = pose_limited_transformed
 
-        # 7. 逆变换 (恢复 IK 期望的 RPY 格式)
-        # 逆变换 pitch: pitch_original = -pitch_transformed
+        # 7. Inverse transform (restore RPY format expected by IK)
+        # Inverse transform pitch: pitch_original = -pitch_transformed
         pitch_limited_original = -pitch_lim_t
-        # 逆变换 roll: roll_original = -roll_transformed + math.pi/2
+        # Inverse transform roll: roll_original = -roll_transformed + math.pi/2
         roll_limited_original = -(roll_lim_t) + math.pi/2
 
         target_gpos = np.array([
             x_lim_t, y_lim_t, z_lim_t,
-            roll_limited_original, pitch_limited_original, yaw_lim_t # 使用调整后的 yaw
+            roll_limited_original, pitch_limited_original, yaw_lim_t # Use adjusted yaw
         ])
 
         distance = eef_action[-1]
         gripper_state = (distance - 24.31) / 75.38
 
-        # 获取夹爪角度的回归
+        # Get gripper angle regression
         gripper_angles = self.get_gripper_angles(distance)
 
         # gripper_state = eef_action[-1]
 
-        # 从夹爪中点计算末端执行器位置
+        # Calculate end effector position from gripper midpoint
         if "eef_rpy_midpoint" in action_space:
             target_gpos = self.get_midpoint(target_gpos, gripper_angles, L=self.gripper_length, inverse=True)
 
@@ -294,7 +289,7 @@ class JoyConController_plus:
     
     # def pos_to_mujoco(self, pos):
     
-    def get_command(self, present_pose, action_space="eef_rpy"):    # present_pose以joint_angles形式给出
+    def get_command(self, present_pose, action_space="eef_rpy"):   
         
         target_pose, gripper_state, button_control = self.joyconrobotics.get_control()
         # print("target_pose:", [f"{x:.3f}" for x in target_pose])
@@ -312,13 +307,13 @@ class JoyConController_plus:
         z = target_pose[2] # init_gpos[2] + 
         _, _, _, roll, pitch, yaw = target_pose
         pitch = -pitch 
-        roll = -(roll - math.pi/2) # lerobo末端旋转90度
+        roll = -(roll - math.pi/2) # Rotate lerobot end effector by 90 degrees
         
         target_gpos = np.array([x, y, z, roll, pitch, yaw])
 
-        # 遥操作时有点问题，控制夹爪时，夹爪角度会变化，导致中点计算偏差，
-        # 原本逻辑，控制末端执行其的位置和姿态，然后控制夹爪状态
-        # 现在逻辑，控制夹爪中点位置和姿态，但是夹爪状态是独立的现在耦合在一起了！！！！！
+        # There's an issue with teleoperation, when controlling gripper, gripper angle changes, causing midpoint calculation deviation
+        # Original logic: control end effector position and orientation, then control gripper state
+        # Current logic: control gripper midpoint position and orientation, but gripper state is independent, now coupled together!!!!!
         if "eef_rpy_midpoint" in action_space:
             gripper_angles = 1
             target_gpos = self.get_midpoint(target_gpos, gripper_angles, L=self.gripper_length, inverse=True)
@@ -343,7 +338,7 @@ class JoyConController_plus:
             joint_angles[3] = -joint_angles[3]
             self.joint_angles_last = joint_angles.copy()
 
-            distance = 75.38 * gripper_state + 24.31 # mm为单位
+            distance = 75.38 * gripper_state + 24.31 # In mm units
             target_gpos = np.concatenate((target_gpos, [distance,]))
 
         else:
@@ -351,35 +346,33 @@ class JoyConController_plus:
             self.joyconrobotics.set_position = self.target_gpos[0:3]
             joint_angles = self.joint_angles_last
 
-            distance = 75.38 * gripper_state + 24.31 # mm为单位
+            distance = 75.38 * gripper_state + 24.31 # In mm units
             target_gpos = np.concatenate((self.target_gpos, [distance,]))
             
         return joint_angles, button_control, target_gpos
     
     def get_delta_command(self, present_pose_angles_deg):
         """
-        根据 Joycon 的 delta 输入计算新的目标关节角度。
+        Calculates the new target joint angles based on the delta input from the Joycon.
 
         Args:
-            present_pose_angles_deg (np.ndarray): 当前机械臂的关节角度 (单位: 度),
-                                                 格式应与 self.joint_angles_last 一致 (带符号翻转)。
+            present_pose_angles_deg (np.ndarray): The current joint angles of the robot arm (in degrees),
+                             in the same format as self.joint_angles_last (with sign flips).
 
         Returns:
             tuple: (joint_angles, button_control, target_gpos_with_distance)
-                   - joint_angles (np.ndarray): 计算出的目标关节角度 (度, 带符号翻转)。
-                   - button_control (int): 来自 Joycon 的按钮控制状态。
-                   - target_gpos_with_distance (np.ndarray): IK 尝试的目标位姿 (x,y,z,r,p,y in rad)
-                                                            加上计算出的夹爪距离 (mm)。
-                                                            如果 IK 失败，则是上一次成功的目标位姿。
+               - joint_angles (np.ndarray): The calculated target joint angles (degrees, with sign flips).
+               - button_control (int): The button control state from the Joycon.
+               - target_gpos_with_distance (np.ndarray): The target pose (x,y,z,r,p,y in rad) attempted by IK,
+                                    plus the calculated gripper distance (mm).
+                                    If IK fails, this is the last successful target pose.
         """
-        # 1. FK: 从当前关节角度 (度, 带翻转) 计算当前 EEF 位姿 (米, 弧度)
         current_angles_deg_flipped = np.array(present_pose_angles_deg)
-        # 准备 FK 输入：反转符号，转为弧度
         qpos_rad_for_fk = current_angles_deg_flipped.copy()
-        qpos_rad_for_fk[0] = -qpos_rad_for_fk[0] # 恢复原始符号
-        qpos_rad_for_fk[1] = -qpos_rad_for_fk[1] # 恢复原始符号
-        qpos_rad_for_fk[3] = -qpos_rad_for_fk[3] # 恢复原始符号
-        qpos_rad_for_fk = np.deg2rad(qpos_rad_for_fk[:6]) # 取前6个，转为弧度
+        qpos_rad_for_fk[0] = -qpos_rad_for_fk[0] 
+        qpos_rad_for_fk[1] = -qpos_rad_for_fk[1] 
+        qpos_rad_for_fk[3] = -qpos_rad_for_fk[3] 
+        qpos_rad_for_fk = np.deg2rad(qpos_rad_for_fk[:6]) 
 
         current_eef_pose_rad = lerobot_FK(qpos_rad_for_fk, robot=self.robot) # (x,y,z, r,p,y in radians)
         print('-' * 50)
@@ -388,7 +381,6 @@ class JoyConController_plus:
         current_pos_w = current_eef_pose_rad[:3]
         current_orient_rad_w = current_eef_pose_rad[3:] # [roll, pitch, yaw]
 
-        # 2. 获取 Delta Action (工具坐标系)
         # delta_pose = [dx_t, dy_t, dz_t, droll_t, dpitch_t, dyaw_t]
         delta_pose, gripper_state, button_control = self.joyconrobotics.get_control(return_delta=True)
 
@@ -398,89 +390,50 @@ class JoyConController_plus:
         print("curr delta_pose", delta_pose)
         
         delta_pos_t = np.array(delta_pose[:3])
-        delta_orient_rad_t = np.array(delta_pose[3:]) # [droll, dpitch, dyaw] 绕工具轴
+        delta_orient_rad_t = np.array(delta_pose[3:]) # [droll, dpitch, dyaw] around tool axes
 
-        distance = 75.38 * gripper_state + 24.31 # mm为单位
+        distance = 75.38 * gripper_state + 24.31 # In mm units
         print(delta_pose)
         print(distance)
         delta_action = np.concatenate((delta_pose, [distance,]))
 
-        # 3. 计算新的目标 EEF 位姿 (世界坐标系)
+        # 3. Calculate new target EEF pose (world coordinate system)
 
-        # --- a. 处理旋转 ---
-        # 将当前世界姿态和工具 delta 姿态转换为 Rotation 对象
-        # !!关键: 确认 FK 和 IK 使用的欧拉角顺序 ('xyz', 'zyx', etc.)
-        # 这里假设是 'xyz'
+        # --- a. Handle rotation ---
+        # Convert current world pose and tool delta pose to Rotation objects
+        # !!Key: Confirm euler angle order used by FK and IK ('xyz', 'zyx', etc.)
+        # Assuming 'xyz' here
         R_world_tool_current = R.from_euler('xyz', current_orient_rad_w, degrees=False)
 
-        # 将工具坐标系下的 delta 旋转也看作是 'xyz' 欧拉角序列定义的旋转
-        # 这是一个内在旋转 (intrinsic rotation)
+        # Convert tool coordinate system delta rotation as 'xyz' euler angle sequence defined rotation
+        # This is an intrinsic rotation
         R_tool_delta = R.from_euler('xyz', delta_orient_rad_t, degrees=False)
-        # 组合旋转：先应用当前旋转，再应用工具坐标系下的 delta 旋转
+        # Apply current rotation first, then apply delta rotation in tool coordinate system
         R_world_tool_new = R_world_tool_current * R_tool_delta
-        # 获取新的世界坐标系下的欧拉角
-        # !!关键: 确保输出的欧拉角顺序与 IK 需要的一致
+        # Get new euler angles in world coordinate system
+        # !!Key: Ensure output euler angle order matches what IK needs
         next_orient_rad_w = R_world_tool_new.as_euler('xyz', degrees=False)
 
-        # --- b. 处理平移 ---
-        # 将工具坐标系下的 delta 平移转换到世界坐标系
+        # --- b. Handle translation ---
+        # Convert tool coordinate system delta translation to world coordinate system
         # delta_pos_w = R_world_tool_current.apply(delta_pos_t) # R_current * delta_t
-        # !! 注意： R.apply 是将向量从“本体坐标系”转换到“外部坐标系”
-        # 如果 delta_pos_t 是在 tool frame 下的向量，我们需要用 R_world_tool_current 将其旋转到 world frame
+        # !! Note: R.apply converts vector from "body coordinate system" to "external coordinate system"
+        # If delta_pos_t is a vector in tool frame, we need to use R_world_tool_current to rotate it to world frame
         delta_pos_w = R_world_tool_current.apply(delta_pos_t)
-        # 计算新的世界坐标系下的位置
+        # Calculate new position in world coordinate system
         next_pos_w = current_pos_w + delta_pos_w
 
-        # --- 组合新的目标位姿 ---
+        # --- Combine new target pose ---
         next_target_eef_pose_rad = np.concatenate((next_pos_w, next_orient_rad_w))
 
-        # 4. 应用变换和限制 (为 IK 做准备)
-        # 注意：这里的变换和限制逻辑现在应用于 next_target_eef_pose_rad (世界坐标系)
-        # 如果你的限制 self.glimit 是定义在某个变换后的坐标系下，你需要相应调整
-        # 以下代码假设变换和限制仍按原样应用于世界坐标系的 r,p,y
+        # 4. Apply transformation and limits (prepare for IK)
+        # Note: The transformation and limit logic here is now applied to next_target_eef_pose_rad (world coordinate system)
+        # If your limits self.glimit are defined in some transformed coordinate system, you need to adjust accordingly
+        # The following code assumes transformation and limits are still applied to world coordinate system r,p,y as before
         x, y, z = next_target_eef_pose_rad[:3]
-        roll, pitch, yaw = next_target_eef_pose_rad[3:] # 世界坐标系的 roll, pitch, yaw
+        roll, pitch, yaw = next_target_eef_pose_rad[3:] # World coordinate system roll, pitch, yaw
 
-        # # a. 坐标变换 (如果你的 IK 或限位需要特定变换)
-        # pitch_transformed = -pitch
-        # roll_transformed = -(roll - math.pi/2)
-
-        # pose_transformed_for_limiting = np.array([x, y, z, roll_transformed, pitch_transformed, yaw])
-
-        # # b. 应用限制 (在变换后的坐标系下)
-        # pose_limited_transformed = np.zeros_like(pose_transformed_for_limiting)
-        # for i in range(6):
-        #     pose_limited_transformed[i] = np.clip(
-        #         pose_transformed_for_limiting[i],
-        #         self.glimit[0][i],
-        #         self.glimit[1][i]
-        #     )
-
-        # x_lim_t, y_lim_t, z_lim_t, roll_lim_t, pitch_lim_t, yaw_lim_t = pose_limited_transformed
-
-        # # c. 逆变换 (恢复 IK 期望的 RPY 格式 - 世界坐标系)
-        # pitch_limited_original = -pitch_lim_t
-        # roll_limited_original = -(roll_lim_t) + math.pi/2
-
-        # target_gpos_for_ik = np.array([
-        #     x_lim_t, y_lim_t, z_lim_t,
-        #     roll_limited_original, pitch_limited_original, yaw_lim_t
-        # ])
-        # # print(f"Target gpos for IK (rad): {[f'{v:.3f}' for v in target_gpos_for_ik]}")
         target_gpos_for_ik = [x, y, z, roll, pitch, yaw]
-
-        # target_gpos_for_ik = np.array([0.21186902, 0.00181367, 0.17290198, 1.533, 0.026, 0.018])
-        # target_gpos_for_ik = np.array([0.21186902, 0.00181367, 0.17290198, 1.533, 0.026, 0.018])
-
-        # target_gpos_for_ik = [ 0.21, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.00473278]
-        # target_gpos_for_ik = [ 0.20, 0.0, 0.17608294, 1.35084124, -0.00889929, 0.00473278]
-        # target_gpos_for_ik = [ 0.21, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.00473278]
-        # target_gpos = [ 0.41, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.00473278] # x
-        # target_gpos = [ 0.21, 0.2, 0.17608294, 1.55084124, -0.00889929, 0.00473278] # y
-        # target_gpos = [ 0.21, 0.0, 0.37608294, 1.55084124, -0.00889929, 0.00473278] # z
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.85084124, -0.00889929, 0.00473278] # roll
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.55084124, 0.29110071, 0.00473278] # pitch
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.30473278] # yaw
 
         self.target_gpos_for_ik = target_gpos_for_ik.copy()
         # target_gpos_for_ik = [0.21772567056163034, 0.0, 0.3, 0.0, 0.0, 0.0]
@@ -488,11 +441,11 @@ class JoyConController_plus:
         print("current_eef_pose_rad", current_eef_pose_rad)
         print("target_gpos_for_ik", target_gpos_for_ik)
 
-        # 5. 执行逆运动学 (IK)
+        # 5. Execute inverse kinematics (IK)
         fd_qpos_mucojo = self.mjdata.qpos[self.qpos_indices][:6]
         qpos_inv_mujoco, IK_success = lerobot_IK(fd_qpos_mucojo, target_gpos_for_ik, robot=self.robot)
 
-        # 6. 处理 IK 结果 (与之前逻辑相同)
+        # 6. Handle IK results (same logic as before)
         if IK_success:
             # print("IK Success")
             self.target_qpos = np.concatenate((qpos_inv_mujoco[:6], [gripper_state,]))
@@ -518,52 +471,52 @@ class JoyConController_plus:
     
     def get_midpoint(self, eef_pos, grip_angles, L=10, inverse=False): 
         """
-        计算机械臂末端执行器位置加上一个固定杆后的端点位置，或进行逆运算。
+        Calculate the endpoint position after adding a fixed rod to the robotic arm end effector position, or perform inverse calculation.
 
         Args:
-            eef_pos (np.ndarray): 末端执行器位姿 (x, y, z, roll, pitch, yaw) 或端点位姿 (当inverse=True时)
-            grip_angles (np.ndarray): 夹爪角度 in radians
-            L (float): 固定杆的长度，单位为米
-            inverse (bool): 是否进行逆运算，True表示从端点位置计算执行器位置
+            eef_pos (np.ndarray): End effector pose (x, y, z, roll, pitch, yaw) or endpoint pose (when inverse=True)
+            grip_angles (np.ndarray): Gripper angles in radians
+            L (float): Length of the fixed rod, in meters
+            inverse (bool): Whether to perform inverse calculation, True means calculate executor position from endpoint position
 
         Returns:
-            np.ndarray: 杆端点位置和姿态 [x, y, z, roll, pitch, yaw] (当inverse=False时)
-                       或执行器位置和姿态 [x, y, z, roll, pitch, yaw] (当inverse=True时)
+            np.ndarray: Rod endpoint position and pose [x, y, z, roll, pitch, yaw] (when inverse=False)
+                       or executor position and pose [x, y, z, roll, pitch, yaw] (when inverse=True)
         """
-        # 从欧拉角创建旋转矩阵 (使用ZYX顺序)
+        # Create rotation matrix from euler angles (using ZYX order)
         R_final = R.from_euler('zyx', eef_pos[3:], degrees=False)
 
         L_effective = L * math.cos(grip_angles)
         
-        # 定义杆在局部坐标系下的位移向量
+        # Define rod displacement vector in local coordinate system
         rod_local = np.array([0, 0, L_effective])
         
         if inverse:
-            # 逆运算：从端点位置计算执行器位置
-            # 将位移转换到全局坐标系并从端点位置减去
+            # Inverse calculation: calculate executor position from endpoint position
+            # Convert displacement to global coordinate system and subtract from endpoint position
             rod_displacement = R_final.apply(rod_local)
             eef_tip_pos = eef_pos[:3] - rod_displacement
             
-            # 姿态保持不变
+            # Pose remains unchanged
             eef_tip_angles = eef_pos[3:]    
             
-            # 返回执行器的完整位姿
+            # Return complete pose of executor
             return np.concatenate([eef_tip_pos, eef_tip_angles])
         else:
-            # 正运算：从执行器位置计算端点位置
-            # 将位移转换到全局坐标系并加上末端执行器位置
+            # Forward calculation: calculate endpoint position from executor position
+            # Convert displacement to global coordinate system and add to end effector position
             rod_displacement = R_final.apply(rod_local)
             rod_tip_pos = eef_pos[:3] + rod_displacement
             
-            # 姿态保持不变
+            # Pose remains unchanged
             rod_tip_angles = eef_pos[3:]    
             
-            # 返回杆端点的完整位姿
+            # Return complete pose of rod endpoint
             return np.concatenate([rod_tip_pos, rod_tip_angles])
     
-    # 从夹爪距离计算夹爪角度，参数待计算
+    # Calculate gripper angles from gripper distance, parameters to be calculated
     def get_gripper_angles(self, gripper_distance):
-        # 夹爪距离与夹爪角度的关系
-        # 夹爪距离 = 75.38 * 夹爪角度 + 24.31
-        # 夹爪角度 = (夹爪距离 - 24.31) / 75.38
+        # Relationship between gripper distance and gripper angle
+        # Gripper distance = 75.38 * gripper angle + 24.31
+        # Gripper angle = (gripper distance - 24.31) / 75.38
         return (gripper_distance - 24.31) / 75.38

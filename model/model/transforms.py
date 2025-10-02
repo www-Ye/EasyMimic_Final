@@ -258,10 +258,9 @@ class GR00TTransform(InvertibleModalityTransform):
                 "phone": 1        # Second video input (phone)
             }
             
-            # 只打印一次
             if not hasattr(self, "_has_printed_black_view_info"):
                 self._has_printed_black_view_info = True
-                print(f"应用黑视角变换配置: {self.embodiment_tag.value} 需要置黑的视角: {views_to_black}")
+                print(f"Applying black view transformation configuration: {self.embodiment_tag.value} Required black view: {views_to_black}")
             for view_name in views_to_black:
                 if view_name in video_modality:
                     # Get the index of this view from hardcoded mapping
@@ -270,12 +269,11 @@ class GR00TTransform(InvertibleModalityTransform):
                     if view_index < images.shape[0]:
                         # Make this view completely black
                         images[view_index] = np.zeros_like(images[view_index])
-                        # 只打印一次，不再每次都打印
                         # print(f"Applied black view transformation for {self.embodiment_tag.value} embodiment: {view_name} (index {view_index})")
                     else:
                         if not hasattr(self, "_has_printed_black_view_warning_index"):
                             self._has_printed_black_view_warning_index = True
-                            print(f"警告: 视角 {view_name} 的索引 {view_index} 超出可用视角数量 {images.shape[0]}")
+                            print(f"Warning: index {view_index} of view {view_name} exceeds the number of available views {images.shape[0]}")
                 else:
                     print(f"Warning: View {view_name} not found in hardcoded video modality mapping")
         

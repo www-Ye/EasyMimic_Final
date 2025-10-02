@@ -111,7 +111,6 @@ class ArgsConfig:
     embodiment_tag: Literal[tuple(EMBODIMENT_TAG_MAPPING.keys())] = "new_embodiment"
     """Embodiment tag to use for training. e.g. 'new_embodiment', 'gr1'"""
 
-    # 新增：外部配置embodiment_tags列表
     embodiment_tags: List[str] = None
     """List of embodiment tags for each dataset. If not provided, will use default mapping."""
 
@@ -170,7 +169,6 @@ def main(config: ArgsConfig):
                 f"or remove the --embodiment-tags argument to use default mapping."
             )
         
-        # 使用外部配置的embodiment_tags
         embodiment_tags = config.embodiment_tags
         print(f"Using external embodiment_tags configuration: {embodiment_tags}")
 

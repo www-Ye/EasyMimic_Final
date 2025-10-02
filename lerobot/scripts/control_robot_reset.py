@@ -296,9 +296,6 @@ def record(
             f"Recording episode {recorded_episodes + 1}/{num_episodes} (dataset index {dataset.num_episodes})"
         )
         # Highly visible progress banner for current episode
-        print(
-            f"\n\033[1;96m==================== 正在采集 第 {recorded_episodes + 1}/{num_episodes} 集 ====================\033[0m"
-        )
         log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
         record_episode(
             dataset=dataset,
@@ -335,7 +332,7 @@ def record(
         recorded_episodes += 1
         # Visible confirmation after saving
         print(
-            f"\033[1;92m✅ 本集已保存！进度：{recorded_episodes}/{num_episodes}\033[0m"
+            f"\033[1;92m Episode saved! Progress: {recorded_episodes}/{num_episodes}\033[0m"
         )
 
         if events["stop_recording"]:

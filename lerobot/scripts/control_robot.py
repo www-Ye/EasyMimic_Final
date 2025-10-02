@@ -293,9 +293,6 @@ def record(
         #     task = input("Enter your task description: ")
 
         # Highly visible progress banner for current episode
-        print(
-            f"\n\033[1;96m==================== 正在采集 第 {recorded_episodes + 1}/{num_episodes} 集 ====================\033[0m"
-        )
         log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
         record_episode(
             dataset=dataset,

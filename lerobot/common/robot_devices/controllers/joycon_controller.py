@@ -60,12 +60,12 @@ class JoyConController:
                     lerobot=True,
                     pitch_down_double=True
                 )
-                break  # 连接成功，跳出循环
+                break  
             except Exception as e:
                 self.retries += 1
                 print(f"Failed to connect to {name} Joycon: {e}")
                 print(f"Retrying ({self.retries}/{self.max_retries}) in 1 second...")
-                time.sleep(1)  # 连接失败后等待 1 秒重试
+                time.sleep(1)  
         else:
             print("Failed to connect after several attempts.")
         
@@ -90,13 +90,8 @@ class JoyConController:
         _, _, _, roll, pitch, yaw = target_pose
         y = 0.01
         pitch = -pitch 
-        roll = roll - math.pi/2 # lerobo末端旋转90度
+        roll = roll - math.pi/2 
         
-        # 双臂朝中间偏
-        # if self.name == 'left':
-        #     yaw = yaw - 0.4
-        # elif self.name == 'right':
-        #     yaw = yaw + 0.4
         
         target_gpos = np.array([x, y, z, roll, pitch, 0.0])
         fd_qpos_mucojo = self.mjdata.qpos[self.qpos_indices][1:5]
@@ -176,12 +171,12 @@ class JoyConController_plus:
                                       gripper_close = -0.15,
                                       gripper_open = 0.5
                                       )
-                break  # 连接成功，跳出循环
+                break  
             except Exception as e:
                 self.retries += 1
                 print(f"Failed to connect to {name} Joycon: {e}")
                 print(f"Retrying ({self.retries}/{self.max_retries}) in 1 second...")
-                time.sleep(1)  # 连接失败后等待 1 秒重试
+                time.sleep(1)  
         else:
             print("Failed to connect after several attempts.")
         
@@ -200,11 +195,10 @@ class JoyConController_plus:
         return eef_state
 
     def get_eef(self, joint_angles, action_space="eef_rpy"):   # "aa"
-        joint_angles[0] = -joint_angles[0]  # 第0个关节角度再次取反
-        joint_angles[1] = -joint_angles[1]  # 第1个关节角度再次取反
-        joint_angles[3] = -joint_angles[3]  # 第3个关节角度再次取反
+        joint_angles[0] = -joint_angles[0] 
+        joint_angles[1] = -joint_angles[1] 
+        joint_angles[3] = -joint_angles[3] 
         qpos = np.deg2rad(joint_angles)
-        # distance = 75.38 * qpos[-1] + 24.31 # mm为单位
         gripper_state = qpos[-1]
         eef_pos = lerobot_FK(qpos[:6], robot=self.robot)
         # if "aa" in action_space:
@@ -225,7 +219,7 @@ class JoyConController_plus:
 
         pose_transformed_for_limiting = np.array([x, y, z, roll_transformed, pitch_transformed, yaw])
 
-        # 5. 应用限制
+        # 5. Application limitations
         pose_limited_transformed = np.zeros_like(pose_transformed_for_limiting)
         for i in range(6):
             pose_limited_transformed[i] = np.clip(
@@ -236,15 +230,13 @@ class JoyConController_plus:
 
         x_lim_t, y_lim_t, z_lim_t, roll_lim_t, pitch_lim_t, yaw_lim_t = pose_limited_transformed
 
-        # 7. 逆变换 (恢复 IK 期望的 RPY 格式)
-        # 逆变换 pitch: pitch_original = -pitch_transformed
+        # 7. inverse transformation (restoration of IK's desired RPY format)
         pitch_limited_original = -pitch_lim_t
-        # 逆变换 roll: roll_original = -roll_transformed + math.pi/2
         roll_limited_original = -(roll_lim_t) + math.pi/2
 
         target_gpos = np.array([
             x_lim_t, y_lim_t, z_lim_t,
-            roll_limited_original, pitch_limited_original, yaw_lim_t # 使用调整后的 yaw
+            roll_limited_original, pitch_limited_original, yaw_lim_t 
         ])
 
         # distance = eef_action[-1]
@@ -295,26 +287,10 @@ class JoyConController_plus:
         z = target_pose[2] # init_gpos[2] + 
         _, _, _, roll, pitch, yaw = target_pose
         pitch = -pitch 
-        roll = -(roll - math.pi/2) # lerobo末端旋转90度
-        
-        # 双臂朝中间偏
-        # if self.name == 'left':
-        #     yaw = yaw + 0.4
-        # elif self.name == 'right':
-        # yaw = yaw + 1.57
+        roll = -(roll - math.pi/2) 
         
         target_gpos = np.array([x, y, z, roll, pitch, yaw])
-        
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.00473278]
-        # target_gpos = [ 0.41, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.00473278] # x
-        # target_gpos = [ 0.21, 0.2, 0.17608294, 1.55084124, -0.00889929, 0.00473278] # y
-        # target_gpos = [ 0.21, 0.0, 0.37608294, 1.55084124, -0.00889929, 0.00473278] # z
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.85084124, -0.00889929, 0.00473278] # roll
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.55084124, 0.29110071, 0.00473278] # pitch
-        # target_gpos = [ 0.21, 0.0, 0.17608294, 1.55084124, -0.00889929, 0.30473278] # yaw
-        # print("target_gpos", target_gpos)
-        # breakpoint()
-        # print(f'{target_gpos=}')
+      
         fd_qpos_mucojo = self.mjdata.qpos[self.qpos_indices][:6]
         # print(self.mjdata.qpos[self.qpos_indices])
         
@@ -328,7 +304,6 @@ class JoyConController_plus:
             mujoco.mj_step(self.mjmodel, self.mjdata)
             self.target_gpos_last = target_gpos.copy() 
 
-            # distance = 75.38 * self.target_qpos[-1] + 24.31 # mm为单位
             joint_angles = np.rad2deg(self.target_qpos)
             joint_angles[0] = -joint_angles[0]
             joint_angles[1] = -joint_angles[1]
@@ -344,8 +319,5 @@ class JoyConController_plus:
             self.joyconrobotics.set_position = self.target_gpos[0:3]
             joint_angles = self.joint_angles_last
             target_gpos = np.concatenate((self.target_gpos, [gripper_state,]))
-        # breakpoint()
-        # if button_control != 0:
-        #     self.joyconrobotics.reset_joycon()
-            
+
         return joint_angles, button_control, target_gpos

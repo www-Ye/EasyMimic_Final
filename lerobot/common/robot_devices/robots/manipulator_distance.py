@@ -378,9 +378,9 @@ class ManipulatorRobot:
             joint_angles = self.follower_arms[name].read("Present_Position")
             self.current_state[name] = self.controllers[name].get_eef(joint_angles.copy(), self.action_space)
             print("current_state", self.current_state[name])
-            joint_angles[0] = -joint_angles[0]  # 第0个关节角度再次取反
-            joint_angles[1] = -joint_angles[1]  # 第1个关节角度再次取反
-            joint_angles[3] = -joint_angles[3]  # 第3个关节角度再次取反
+            joint_angles[0] = -joint_angles[0] 
+            joint_angles[1] = -joint_angles[1]  
+            joint_angles[3] = -joint_angles[3]  
             qpos = np.deg2rad(joint_angles)
             print("qpos", qpos)
             self.controllers[name].set_mujoco_pos(qpos)
@@ -590,7 +590,7 @@ class ManipulatorRobot:
             elif (self.action_space == "eef_rpy") or (self.action_space == "eef_aa") or (self.action_space == "eef_rpy_midpoint"):
                 # eef_action = self.controllers[name].get_eef(goal_pos.numpy().copy(), self.action_space)
 
-                follower_goal_pos[name] = torch.from_numpy(target_eef_state)    # 相对base坐标系
+                follower_goal_pos[name] = torch.from_numpy(target_eef_state)   
 
             # # Used when record_data=True
             # follower_goal_pos[name] = goal_pos
@@ -616,7 +616,7 @@ class ManipulatorRobot:
             elif (self.action_space == "eef_rpy") or (self.action_space == "eef_aa") or (self.action_space == "eef_rpy_midpoint"):
                 eef_state = self.controllers[name].get_eef(follower_pos[name], self.action_space)
 
-                follower_pos[name] = torch.from_numpy(eef_state)  # 相对base坐标系
+                follower_pos[name] = torch.from_numpy(eef_state) 
 
             # follower_pos[name] = torch.from_numpy(follower_pos[name])
             self.logs[f"read_follower_{name}_pos_dt_s"] = time.perf_counter() - before_fread_t
@@ -676,20 +676,6 @@ class ManipulatorRobot:
                 eef_state = self.controllers[name].get_eef(follower_pos[name], self.action_space)
                 follower_pos[name] = torch.from_numpy(eef_state)
             
-            # elif (self.action_space == "relative_eef_rpy") or (self.action_space == "relative_eef_aa"):
-            #     eef_state = self.controllers[name].get_eef(follower_pos[name], self.action_space)
-
-            #     if name in self.state_last:
-            #         # relative_eef_state = follower_pos[name] - self.state_last[name]
-            #         states = np.concatenate((self.state_last[name], eef_state))
-            #         follower_pos[name] = torch.from_numpy(states)
-            #     else:
-            #         states = np.concatenate((eef_state, eef_state))
-            #         follower_pos[name] = torch.from_numpy(states)
-
-            #     self.state_last[name] = eef_state
-            
-            # sim_follower_pos[name] = self.controllers[name].get_sim_eef()
             sim_follower_pos[name] = self.current_state[name]
 
             # follower_pos[name] = torch.from_numpy(follower_pos[name])
